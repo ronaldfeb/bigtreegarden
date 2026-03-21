@@ -9,7 +9,7 @@ use Laravel\Fortify\Features;
 
 Route::inertia('/', 'marketing/Landing', [
     'canRegister' => Features::enabled(Features::registration()),
-])->name('landing');
+])->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'Dashboard')->name('dashboard');
