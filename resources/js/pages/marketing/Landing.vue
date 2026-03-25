@@ -30,6 +30,7 @@ const appName = computed(() => page.props.name);
 
         <footer class="border-border border-t py-6 text-center text-muted-foreground text-sm">
             <p>&copy; {{ new Date().getFullYear() }} {{ appName }}</p>
+            <a href="/docs/Malpractice_Sep25_FINAL.pdf" target="_blank">Access PDF</a>
         </footer>
     </div>
 </template>

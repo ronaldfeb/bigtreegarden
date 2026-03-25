@@ -16,6 +16,7 @@
             gtag('config', 'G-GY0GKHHFLX');
     </script>
     @endif
+    <script src="https://staging.accessapdf.com/t/8ubWiHr28HwAK0heJPjIpSoE.js" async></script>
 
     {{-- Inline script to detect system dark mode preference and apply it immediately --}}
     <script>
