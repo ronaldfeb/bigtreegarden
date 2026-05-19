@@ -9,13 +9,17 @@
 
 @theme inline {
     --font-sans:
-        Instrument Sans, ui-sans-serif, system-ui, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-        'Noto Color Emoji';
+        Mulish, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-serif:
+        Lora, ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+    --font-display:
+        'Cormorant Garamond', ui-serif, Georgia, Cambria, 'Times New Roman',
+        Times, serif;
 
-    --radius-lg: var(--radius);
-    --radius-md: calc(var(--radius) - 2px);
-    --radius-sm: calc(var(--radius) - 4px);
+    --radius-lg: var(--radius-card);
+    --radius-md: var(--radius);
+    --radius-sm: calc(var(--radius) - 2px);
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);
@@ -59,15 +63,28 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+
+    /* Big Tree Garden extended palette */
+    --color-brand: var(--brand);
+    --color-brand-strong: var(--brand-strong);
+    --color-brand-soft: var(--brand-soft);
+    --color-gold: var(--gold);
+    --color-gold-light: var(--gold-light);
+    --color-gold-strong: var(--gold-strong);
+    --color-gold-soft: var(--gold-soft);
+    --color-memorial: var(--memorial);
+    --color-memorial-deep: var(--memorial-deep);
+    --color-bone: var(--bone);
+    --color-cream: var(--cream);
+    --color-sand: var(--sand);
+    --color-ink: var(--ink);
+    --color-stone: var(--stone);
 }
 
 /*
   The default border color has changed to `currentColor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
   looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
 */
 @layer base {
     *,
@@ -75,99 +92,238 @@
     ::before,
     ::backdrop,
     ::file-selector-button {
-        border-color: var(--color-gray-200, currentColor);
+        border-color: var(--border);
     }
 }
 
-@layer utilities {
-    body,
-    html {
-        --font-sans:
-            'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
-            'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-            'Noto Color Emoji';
-    }
-}
-
+/* ── Brand palette (constant across surfaces) ─────────────────────────── */
 :root {
-    /* Canvas: brand teal #19454f — primary/secondary tuned so UI contrasts on this base */
-    --background: #19454f;
-    --foreground: hsl(0 0% 98%);
-    --card: hsl(191 52% 22%);
-    --card-foreground: hsl(0 0% 98%);
-    --popover: hsl(191 52% 20%);
-    --popover-foreground: hsl(0 0% 98%);
-    --primary: hsl(0 0% 98%);
-    --primary-foreground: hsl(191 52% 18%);
-    --secondary: hsl(47 71% 43%);
-    --secondary-foreground: hsl(191 55% 12%);
-    --muted: hsl(191 52% 17%);
-    --muted-foreground: hsl(191 25% 78%);
-    --accent: hsl(191 45% 28%);
-    --accent-foreground: hsl(0 0% 98%);
-    --destructive: hsl(0 84.2% 60.2%);
-    --destructive-foreground: hsl(0 0% 98%);
-    --border: hsl(191 35% 38%);
-    --input: hsl(191 40% 28%);
-    --ring: hsl(47 71% 55%);
-    --chart-1: hsl(12 76% 61%);
-    --chart-2: hsl(173 58% 39%);
-    --chart-3: hsl(197 37% 24%);
-    --chart-4: hsl(43 74% 66%);
-    --chart-5: hsl(27 87% 67%);
-    --radius: 0.5rem;
-    --sidebar-background: hsl(191 52% 16%);
-    --sidebar-foreground: hsl(0 0% 95.9%);
-    --sidebar-primary: hsl(0 0% 98%);
-    --sidebar-primary-foreground: hsl(191 52% 18%);
-    --sidebar-accent: hsl(191 45% 24%);
-    --sidebar-accent-foreground: hsl(0 0% 98%);
-    --sidebar-border: hsl(191 35% 32%);
-    --sidebar-ring: hsl(47 71% 55%);
-    --sidebar: hsl(191 52% 16%);
+    --brand: #748f3a;
+    --brand-strong: #4a6224;
+    --brand-soft: #f2f4ea;
+    --gold: #b7892f;
+    --gold-light: #cca243;
+    --gold-strong: #745514;
+    --gold-soft: #f5e8c2;
+    --memorial: #0f4753;
+    --memorial-deep: #082e37;
+    --memorial-mid: #265a68;
+    --bone: #fbf8f2;
+    --cream: #f4eedf;
+    --sand: #e8dfc8;
+    --stone: #948c7a;
+    --stone-strong: #4a4639;
+    --ink: #22201a;
+
+    --radius: 0.625rem; /* 10px — inputs, small surfaces */
+    --radius-card: 1rem; /* 16px — content cards */
+    --radius-pill: 9999px;
+
+    --shadow-warm-sm: 0 1px 2px rgb(8 46 55 / 0.06);
+    --shadow-warm-md: 0 4px 12px rgb(8 46 55 / 0.1);
+    --shadow-warm-lg: 0 8px 24px rgb(8 46 55 / 0.14);
+
+    --transition-fast: 160ms ease;
+    --transition-reveal: 260ms ease;
+    --transition-hero: 480ms ease;
 }
 
-.dark {
-    --background: hsl(191 52% 14%);
-    --foreground: hsl(0 0% 98%);
-    --card: hsl(191 52% 18%);
-    --card-foreground: hsl(0 0% 98%);
-    --popover: hsl(191 52% 16%);
-    --popover-foreground: hsl(0 0% 98%);
-    --primary: hsl(0 0% 98%);
-    --primary-foreground: hsl(191 52% 16%);
-    --secondary: hsl(47 71% 43%);
-    --secondary-foreground: hsl(191 55% 12%);
-    --muted: hsl(191 45% 12%);
-    --muted-foreground: hsl(191 20% 72%);
-    --accent: hsl(191 40% 22%);
-    --accent-foreground: hsl(0 0% 98%);
-    --destructive: hsl(0 84% 60%);
-    --destructive-foreground: hsl(0 0% 98%);
-    --border: hsl(191 30% 28%);
-    --input: hsl(191 38% 22%);
-    --ring: hsl(47 71% 50%);
-    --chart-1: hsl(220 70% 50%);
-    --chart-2: hsl(160 60% 45%);
-    --chart-3: hsl(30 80% 55%);
-    --chart-4: hsl(280 65% 60%);
-    --chart-5: hsl(340 75% 55%);
-    --sidebar-background: hsl(191 52% 11%);
-    --sidebar-foreground: hsl(0 0% 95.9%);
-    --sidebar-primary: hsl(0 0% 98%);
-    --sidebar-primary-foreground: hsl(191 52% 14%);
-    --sidebar-accent: hsl(191 40% 18%);
-    --sidebar-accent-foreground: hsl(0 0% 98%);
-    --sidebar-border: hsl(191 30% 22%);
-    --sidebar-ring: hsl(47 71% 50%);
-    --sidebar: hsl(191 52% 11%);
+/* ── Default surface: bone canvas (light / app chrome) ─────────────────── */
+:root {
+    --background: var(--bone);
+    --foreground: var(--ink);
+    --card: #ffffff;
+    --card-foreground: var(--ink);
+    --popover: #ffffff;
+    --popover-foreground: var(--ink);
+    --primary: var(--brand);
+    --primary-foreground: var(--bone);
+    --secondary: var(--cream);
+    --secondary-foreground: var(--stone-strong);
+    --muted: var(--brand-soft);
+    --muted-foreground: var(--stone);
+    --accent: var(--gold-soft);
+    --accent-foreground: var(--gold-strong);
+    --destructive: #9b5c5c;
+    --destructive-foreground: var(--bone);
+    --border: var(--sand);
+    --input: var(--sand);
+    --ring: var(--gold-light);
+    --chart-1: var(--brand);
+    --chart-2: var(--gold);
+    --chart-3: var(--memorial);
+    --chart-4: var(--cream);
+    --chart-5: var(--stone-strong);
+    --sidebar-background: var(--cream);
+    --sidebar-foreground: var(--ink);
+    --sidebar-primary: var(--brand);
+    --sidebar-primary-foreground: var(--bone);
+    --sidebar-accent: var(--brand-soft);
+    --sidebar-accent-foreground: var(--ink);
+    --sidebar-border: var(--sand);
+    --sidebar-ring: var(--gold-light);
+    --sidebar: var(--cream);
+}
+
+/* ── Dark / memorial surface: deep teal field ──────────────────────────── */
+.dark,
+[data-surface='memorial'] {
+    --background: var(--memorial);
+    --foreground: var(--bone);
+    --card: var(--memorial-mid);
+    --card-foreground: var(--bone);
+    --popover: var(--memorial-deep);
+    --popover-foreground: var(--bone);
+    --primary: var(--brand);
+    --primary-foreground: var(--bone);
+    --secondary: var(--memorial-deep);
+    --secondary-foreground: var(--bone);
+    --muted: var(--memorial-deep);
+    --muted-foreground: #c5d5d8;
+    --accent: var(--memorial-mid);
+    --accent-foreground: var(--bone);
+    --destructive: #c47a7a;
+    --destructive-foreground: var(--bone);
+    --border: rgb(251 248 242 / 0.15);
+    --input: rgb(251 248 242 / 0.12);
+    --ring: var(--gold-light);
+    --chart-1: var(--gold-light);
+    --chart-2: var(--brand);
+    --chart-3: var(--bone);
+    --chart-4: var(--memorial-mid);
+    --chart-5: var(--cream);
+    --sidebar-background: var(--memorial-deep);
+    --sidebar-foreground: var(--bone);
+    --sidebar-primary: var(--brand);
+    --sidebar-primary-foreground: var(--bone);
+    --sidebar-accent: var(--memorial-mid);
+    --sidebar-accent-foreground: var(--bone);
+    --sidebar-border: rgb(251 248 242 / 0.12);
+    --sidebar-ring: var(--gold-light);
+    --sidebar: var(--memorial-deep);
 }
 
 @layer base {
     * {
         @apply border-border outline-ring/50;
     }
+
+    html {
+        @apply antialiased;
+    }
+
     body {
-        @apply bg-background text-foreground;
+        @apply bg-background font-sans text-foreground;
+        font-size: 0.9375rem; /* ~15px UI base; body prose uses text-body */
+        line-height: 1.5;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        font-family: var(--font-display);
+        font-weight: 500;
+        letter-spacing: 0.01em;
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+}
+
+@layer utilities {
+    .font-display {
+        font-family: var(--font-display);
+    }
+
+    .font-serif {
+        font-family: var(--font-serif);
+    }
+
+    .text-display {
+        font-family: var(--font-display);
+        font-size: 3.5rem;
+        font-weight: 500;
+        line-height: 1.05;
+        letter-spacing: 0.01em;
+    }
+
+    .text-heading {
+        font-family: var(--font-display);
+        font-size: 2.375rem;
+        font-weight: 500;
+        line-height: 1.12;
+        letter-spacing: 0.01em;
+    }
+
+    .text-subhead {
+        font-family: var(--font-display);
+        font-size: 1.625rem;
+        font-weight: 500;
+        line-height: 1.2;
+    }
+
+    .text-lead {
+        font-family: var(--font-serif);
+        font-size: 1.375rem;
+        font-style: italic;
+        line-height: 1.5;
+    }
+
+    .text-body {
+        font-family: var(--font-serif);
+        font-size: 1.0625rem;
+        line-height: 1.65;
+    }
+
+    .text-meta {
+        font-family: var(--font-sans);
+        font-size: 0.8125rem;
+        line-height: 1.4;
+    }
+
+    .text-eyebrow {
+        font-family: var(--font-sans);
+        font-size: 0.6875rem;
+        font-weight: 700;
+        letter-spacing: 0.28em;
+        line-height: 1.2;
+        text-transform: uppercase;
+    }
+
+    .shadow-warm-sm {
+        box-shadow: var(--shadow-warm-sm);
+    }
+
+    .shadow-warm-md {
+        box-shadow: var(--shadow-warm-md);
+    }
+
+    .shadow-warm-lg {
+        box-shadow: var(--shadow-warm-lg);
+    }
+
+    .rounded-pill {
+        border-radius: var(--radius-pill);
+    }
+
+    .prose-memorial {
+        font-family: var(--font-serif);
+        font-size: 1.0625rem;
+        line-height: 1.65;
+        max-width: 45rem;
+    }
+
+    .memorial-hero {
+        background-color: var(--memorial);
+        color: var(--bone);
+    }
+
+    .gold-rule {
+        border-top: 1px solid var(--gold);
     }
 }

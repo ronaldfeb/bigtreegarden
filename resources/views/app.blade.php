@@ -16,7 +16,6 @@
             gtag('config', 'G-GY0GKHHFLX');
     </script>
     @endif
-    <script src="https://staging.accessapdf.com/t/73SfhqcaNNohAEDrewCGupFs.js" async></script>
 
     {{-- Inline script to detect system dark mode preference and apply it immediately --}}
     <script>
@@ -33,14 +32,14 @@
             })();
     </script>
 
-    {{-- Match app theme --background (avoids white flash before CSS loads) --}}
+    {{-- Match app theme --background (avoids flash before CSS loads) --}}
     <style>
         html {
-            background-color: #19454f;
+            background-color: #fbf8f2;
         }
 
         html.dark {
-            background-color: hsl(191 52% 14%);
+            background-color: #0f4753;
         }
     </style>
 
@@ -51,7 +50,10 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
+    <link
+        href="https://fonts.bunny.net/css?family=cormorant-garamond:400,500,500i|lora:400,500,500i|mulish:400,500,600,700"
+        rel="stylesheet"
+    />
 
     @vite(['resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])
     @inertiaHead

@@ -27,13 +27,13 @@ const mainNavItems: NavItem[] = [
 
 const footerNavItems: NavItem[] = [
     {
-        title: 'Repository',
-        href: 'https://github.com/laravel/vue-starter-kit',
+        title: 'Terms of Service',
+        href: 'https://bigtreegarden.co.za/terms-of-service',
         icon: FolderGit2,
     },
     {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
+        title: 'Privacy Policy',
+        href: 'https://bigtreegarden.co.za/privacy-policy',
         icon: BookOpen,
     },
 ];

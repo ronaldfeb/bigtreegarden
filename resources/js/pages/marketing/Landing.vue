@@ -1,10 +1,27 @@
 <script setup lang="ts">
 import { Head, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import AmbassadorsSection from '@/components/marketing/AmbassadorsSection.vue';
+import FuneralProgrammeExplainer from '@/components/marketing/FuneralProgrammeExplainer.vue';
+import HeroCarousel from '@/components/marketing/HeroCarousel.vue';
+import HeroCta from '@/components/marketing/HeroCta.vue';
+import MarketingLayout from '@/layouts/marketing/MarketingLayout.vue';
 
-defineProps<{
-    canRegister?: boolean;
-}>();
+withDefaults(
+    defineProps<{
+        canRegister?: boolean;
+        ambassadors?: Array<{
+            id: string;
+            name: string;
+            title: string;
+            image_url: string;
+        }>;
+    }>(),
+    {
+        canRegister: true,
+        ambassadors: () => [],
+    },
+);
 
 const page = usePage<{ name: string }>();
 const appName = computed(() => page.props.name);
@@ -14,23 +31,25 @@ const appName = computed(() => page.props.name);
 
     <Head :title="appName" />
 
-    <div class="flex min-h-screen flex-col bg-background text-foreground">
-        <main class="flex flex-1 flex-col items-center justify-center px-6 py-16">
-            <div class="flex w-full max-w-lg flex-col items-center gap-10 text-center">
-                <img src="/assets/logo/logo_rect.webp" :alt="appName" class="h-auto w-full max-w-md object-contain"
-                    width="480" height="120" />
-
-                <div class="space-y-3">
-                    <p class="text-muted-foreground text-pretty text-base leading-relaxed">
-                        We are building a platform to help you create eternal memories.
-                    </p>
-                </div>
+    <MarketingLayout :can-register="canRegister">
+        <section class="relative min-w-0 overflow-x-hidden px-4 py-10 sm:px-6 sm:py-12 md:min-h-[min(40rem,78vh)] md:p-0">
+            <div class="hidden min-w-0 overflow-hidden md:block">
+                <HeroCarousel />
             </div>
-        </main>
+            <div
+                class="mx-auto w-full max-w-xl md:pointer-events-none md:absolute md:inset-0 md:z-20 md:flex md:items-center md:justify-center md:px-6 md:pb-0 lg:px-8"
+            >
+                <HeroCta class="md:pointer-events-auto w-full" />
+            </div>
+        </section>
 
-        <footer class="border-border border-t py-6 text-center text-muted-foreground text-sm">
-            <p>&copy; {{ new Date().getFullYear() }} {{ appName }}</p>
-            <a href="/docs/Malpractice_Sep25_FINAL.pdf" target="_blank">Access PDF</a>
-        </footer>
-    </div>
+        <p class="mx-auto max-w-2xl px-4 pb-16 text-center text-body text-pretty text-muted-foreground sm:px-6 lg:px-8">
+            Create a private, lasting place for the people you love - and the moments
+            that shaped them.
+        </p>
+
+        <FuneralProgrammeExplainer />
+
+        <AmbassadorsSection :ambassadors="ambassadors" />
+    </MarketingLayout>
 </template>
