@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Ambassador;
+use App\Models\AmbassadorImage;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -21,7 +22,6 @@ class AmbassadorFactory extends Factory
             'name' => fake()->name(),
             'title' => fake()->jobTitle(),
             'description' => fake()->optional()->paragraphs(2, true),
-            'image_url' => 'https://placehold.net/avatar.svg',
             'status' => config('constants.ambassador.status.active'),
             'handle_linkedin' => null,
             'handle_facebook' => null,
@@ -45,5 +45,15 @@ class AmbassadorFactory extends Factory
             'handle_instagram' => 'https://instagram.com/'.fake()->userName(),
             'website_url' => fake()->url(),
         ]);
+    }
+
+    public function withImages(int $count = 4): static
+    {
+        return $this->afterCreating(function (Ambassador $ambassador) use ($count): void {
+            AmbassadorImage::factory()
+                ->count($count)
+                ->sequence(fn ($sequence) => ['sort_order' => $sequence->index])
+                ->create(['ambassador_id' => $ambassador->id]);
+        });
     }
 }

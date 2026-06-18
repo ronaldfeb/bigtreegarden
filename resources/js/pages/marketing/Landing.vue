@@ -14,7 +14,11 @@ withDefaults(
             id: string;
             name: string;
             title: string;
-            image_url: string;
+            images: Array<{
+                id: string;
+                image_path: string;
+                caption?: string | null;
+            }>;
         }>;
     }>(),
     {

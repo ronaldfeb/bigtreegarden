@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Marketing;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ambassador;
+use App\Models\AmbassadorImage;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -15,13 +16,18 @@ class LandingController extends Controller
     {
         $ambassadors = Ambassador::query()
             ->active()
+            ->with(['images' => fn ($query) => $query->orderBy('sort_order')])
             ->orderBy('name')
             ->get()
             ->map(fn (Ambassador $ambassador): array => [
                 'id' => $ambassador->id,
                 'name' => $ambassador->name,
                 'title' => $ambassador->title,
-                'image_url' => $ambassador->image_url,
+                'images' => $ambassador->images->map(fn (AmbassadorImage $image): array => [
+                    'id' => $image->id,
+                    'image_path' => $image->image_path,
+                    'caption' => $image->caption,
+                ])->values()->all(),
             ]);
 
         return Inertia::render('marketing/Landing', [

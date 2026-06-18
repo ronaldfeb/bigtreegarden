@@ -8,12 +8,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'name',
     'title',
     'description',
-    'image_url',
     'status',
     'handle_linkedin',
     'handle_facebook',
@@ -24,6 +24,11 @@ class Ambassador extends Model
 {
     /** @use HasFactory<AmbassadorFactory> */
     use HasFactory, HasUuids;
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(AmbassadorImage::class)->orderBy('sort_order');
+    }
 
     /**
      * @param  Builder<Ambassador>  $query

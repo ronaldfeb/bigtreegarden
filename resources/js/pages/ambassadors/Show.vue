@@ -2,6 +2,7 @@
 import { Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { Facebook, Globe, Instagram, Linkedin } from 'lucide-vue-next';
+import AmbassadorImageGallery from '@/components/marketing/AmbassadorImageGallery.vue';
 import MarketingLayout from '@/layouts/marketing/MarketingLayout.vue';
 import { home } from '@/routes';
 
@@ -11,7 +12,11 @@ const props = defineProps<{
         name: string;
         title: string;
         description: string | null;
-        image_url: string;
+        images: Array<{
+            id: string;
+            image_path: string;
+            caption?: string | null;
+        }>;
         handle_linkedin: string | null;
         handle_facebook: string | null;
         handle_instagram: string | null;
@@ -58,10 +63,9 @@ const socialLinks = computed(() =>
             </Link>
 
             <div class="mt-8 overflow-hidden rounded-2xl border border-border bg-card shadow-warm-lg">
-                <img
-                    :src="ambassador.image_url"
-                    :alt="ambassador.name"
-                    class="aspect-[4/3] w-full object-cover sm:aspect-[16/9]"
+                <AmbassadorImageGallery
+                    :images="ambassador.images"
+                    :alt-prefix="ambassador.name"
                 />
 
                 <div class="space-y-6 p-6 sm:p-8">

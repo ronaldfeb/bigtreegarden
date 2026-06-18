@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Ambassador;
+use App\Models\AmbassadorImage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -22,6 +23,10 @@ it('renders the marketing landing page', function () {
 
 it('includes only active ambassadors on the landing page', function () {
     $active = Ambassador::factory()->create(['name' => 'Active Ambassador']);
+    AmbassadorImage::factory()->create([
+        'ambassador_id' => $active->id,
+        'sort_order' => 0,
+    ]);
     Ambassador::factory()->inactive()->create(['name' => 'Inactive Ambassador']);
 
     $response = $this->get('/');
@@ -32,5 +37,6 @@ it('includes only active ambassadors on the landing page', function () {
         ->has('ambassadors', 1)
         ->where('ambassadors.0.id', $active->id)
         ->where('ambassadors.0.name', 'Active Ambassador')
+        ->has('ambassadors.0.images', 1)
     );
 });

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Ambassador;
+use App\Models\AmbassadorImage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -13,6 +14,11 @@ it('renders the ambassador detail page for active ambassadors', function () {
         'description' => 'Helps families plan memorials.',
     ]);
 
+    $images = AmbassadorImage::factory()
+        ->count(3)
+        ->sequence(fn ($sequence) => ['sort_order' => $sequence->index])
+        ->create(['ambassador_id' => $ambassador->id]);
+
     $response = $this->get(route('ambassadors.show', $ambassador));
 
     $response->assertOk();
@@ -24,7 +30,9 @@ it('renders the ambassador detail page for active ambassadors', function () {
         ->where('ambassador.name', 'Jane Doe')
         ->where('ambassador.title', 'Community liaison')
         ->where('ambassador.description', 'Helps families plan memorials.')
-        ->where('ambassador.image_url', $ambassador->image_url)
+        ->has('ambassador.images', 3)
+        ->where('ambassador.images.0.id', $images[0]->id)
+        ->where('ambassador.images.0.image_path', $images[0]->image_path)
         ->where('ambassador.handle_linkedin', $ambassador->handle_linkedin)
         ->where('ambassador.website_url', $ambassador->website_url)
     );

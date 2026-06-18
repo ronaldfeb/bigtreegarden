@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import AmbassadorImageGallery from '@/components/marketing/AmbassadorImageGallery.vue';
 import { show } from '@/routes/ambassadors';
 
 defineProps<{
@@ -7,7 +8,11 @@ defineProps<{
         id: string;
         name: string;
         title: string;
-        image_url: string;
+        images: Array<{
+            id: string;
+            image_path: string;
+            caption?: string | null;
+        }>;
     }>;
 }>();
 </script>
@@ -27,27 +32,29 @@ defineProps<{
                 class="-mx-4 mt-10 min-w-0 overflow-x-auto overscroll-x-contain px-4 pb-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
             >
                 <div class="flex w-max gap-4" role="list">
-                <Link
-                    v-for="ambassador in ambassadors"
-                    :key="ambassador.id"
-                    :href="show.url(ambassador.id)"
-                    role="listitem"
-                    class="group w-56 shrink-0 overflow-hidden rounded-xl border border-border bg-background transition-shadow hover:shadow-warm-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                    <img
-                        :src="ambassador.image_url"
-                        :alt="ambassador.name"
-                        class="aspect-square w-full object-cover"
-                    />
-                    <div class="space-y-1 p-4">
-                        <h3 class="font-semibold text-base group-hover:text-brand-strong">
-                            {{ ambassador.name }}
-                        </h3>
-                        <p class="text-muted-foreground text-sm">
-                            {{ ambassador.title }}
-                        </p>
-                    </div>
-                </Link>
+                    <article
+                        v-for="ambassador in ambassadors"
+                        :key="ambassador.id"
+                        role="listitem"
+                        class="w-72 shrink-0 overflow-hidden rounded-xl border border-border bg-background shadow-warm-sm"
+                    >
+                        <AmbassadorImageGallery
+                            :images="ambassador.images"
+                            :alt-prefix="ambassador.name"
+                        />
+
+                        <Link
+                            :href="show.url(ambassador.id)"
+                            class="group block space-y-1 p-4 transition-shadow hover:shadow-warm-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                            <h3 class="font-semibold text-base group-hover:text-brand-strong">
+                                {{ ambassador.name }}
+                            </h3>
+                            <p class="text-muted-foreground text-sm">
+                                {{ ambassador.title }}
+                            </p>
+                        </Link>
+                    </article>
                 </div>
             </div>
         </div>
