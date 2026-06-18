@@ -5,11 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Pamphlet;
 use App\Models\Payment;
 use App\Services\GuestPamphletDraftService;
+use App\Services\PamphletPaymentFulfillmentService;
 use App\Services\PayfastService;
-use App\Services\QrCodeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -38,52 +39,54 @@ class PaymentController extends Controller
             ->withCookie($guestPamphletDraftService->clearCookie());
     }
 
-    public function checkout(Pamphlet $pamphlet, PayfastService $payfastService): InertiaResponse
+    public function checkout(Pamphlet $pamphlet, PayfastService $payfastService): InertiaResponse|RedirectResponse
     {
         abort_if($pamphlet->user_id !== request()->user()->id, 403);
 
-        $payment = $pamphlet->payments()->create([
-            'provider' => 'payfast',
-            'amount_cents' => config('memorial.fixed_price_cents'),
-            'currency' => 'ZAR',
-            'status' => 'initiated',
-        ]);
+        if (in_array($pamphlet->status, ['paid', 'published'], true)) {
+            return redirect()->route('memorial.edit', $pamphlet);
+        }
+
+        $payment = $pamphlet->payments()
+            ->where('status', 'initiated')
+            ->latest()
+            ->first();
+
+        if ($payment === null) {
+            $payment = $pamphlet->payments()->create([
+                'provider' => 'payfast',
+                'amount_cents' => config('memorial.fixed_price_cents'),
+                'currency' => 'ZAR',
+                'status' => 'initiated',
+            ]);
+        }
 
         return Inertia::render('payments/Checkout', [
             'checkoutUrl' => $payfastService->checkoutUrl(),
-            'payload' => $payfastService->buildCheckoutPayload($pamphlet),
+            'payload' => $payfastService->buildCheckoutPayload($pamphlet, $payment),
             'paymentId' => $payment->id,
         ]);
     }
 
-    public function handleReturn(Pamphlet $pamphlet, QrCodeService $qrCodeService): RedirectResponse
+    public function handleReturn(Pamphlet $pamphlet): RedirectResponse
     {
-        $payment = $pamphlet->payments()->latest()->first();
+        abort_if($pamphlet->user_id !== request()->user()->id, 403);
 
-        if ($payment !== null) {
-            $payment->update([
-                'status' => 'paid',
-                'paid_at' => now(),
-            ]);
-        }
+        $pamphlet->refresh();
 
-        $pamphlet->update([
-            'status' => 'paid',
-            'paid_at' => now(),
-        ]);
+        $message = in_array($pamphlet->status, ['paid', 'published'], true)
+            ? 'Payment received. You can now complete your memorial page.'
+            : 'Your payment is being processed. This may take a moment.';
 
-        $targetUrl = route('memorial.public.show', $pamphlet->public_slug);
-        $pamphlet->pamphletQrCode()->updateOrCreate([], [
-            'target_url' => $targetUrl,
-            'image_path' => $qrCodeService->imageUrlForPamphlet($pamphlet),
-            'generated_at' => now(),
-        ]);
-
-        return redirect()->route('memorial.edit', $pamphlet);
+        return redirect()
+            ->route('memorial.edit', $pamphlet)
+            ->with('status', $message);
     }
 
     public function handleCancel(Pamphlet $pamphlet): RedirectResponse
     {
+        abort_if($pamphlet->user_id !== request()->user()->id, 403);
+
         $pamphlet->payments()->latest()->first()?->update([
             'status' => 'cancelled',
         ]);
@@ -95,19 +98,59 @@ class PaymentController extends Controller
         return redirect()->route('pamphlets.show', $pamphlet);
     }
 
-    public function handleNotify(Request $request, Pamphlet $pamphlet): Response
-    {
-        /** @var Payment|null $payment */
-        $payment = $pamphlet->payments()->latest()->first();
+    public function handleNotify(
+        Request $request,
+        Pamphlet $pamphlet,
+        PayfastService $payfastService,
+        PamphletPaymentFulfillmentService $fulfillmentService
+    ): Response {
+        $payload = $request->all();
+        $paramString = $payfastService->buildItnParameterString($payload);
 
-        if ($payment !== null) {
-            $status = $request->string('payment_status')->lower()->toString();
+        $payment = Payment::query()
+            ->where('pamphlet_id', $pamphlet->id)
+            ->whereKey($request->string('m_payment_id')->toString())
+            ->first();
 
+        if ($payment === null) {
+            Log::warning('PayFast ITN received for unknown payment.', [
+                'pamphlet_id' => $pamphlet->id,
+                'm_payment_id' => $request->string('m_payment_id')->toString(),
+            ]);
+
+            return response('OK', 200);
+        }
+
+        $signatureValid = $payfastService->isValidItnSignature($payload, $paramString);
+        $amountValid = $payfastService->isValidItnAmount($payment, $payload);
+        $serverConfirmed = $payfastService->confirmItnWithPayfast($paramString);
+
+        if (! $signatureValid || ! $amountValid || ! $serverConfirmed) {
+            Log::warning('PayFast ITN failed security checks.', [
+                'pamphlet_id' => $pamphlet->id,
+                'payment_id' => $payment->id,
+                'signature_valid' => $signatureValid,
+                'amount_valid' => $amountValid,
+                'server_confirmed' => $serverConfirmed,
+            ]);
+
+            return response('OK', 200);
+        }
+
+        $status = $request->string('payment_status')->upper()->toString();
+
+        if ($status === 'COMPLETE') {
+            $fulfillmentService->fulfill(
+                $pamphlet,
+                $payment,
+                $payload,
+                $request->string('pf_payment_id')->toString() ?: null,
+            );
+        } else {
             $payment->update([
                 'provider_payment_id' => $request->string('pf_payment_id')->toString() ?: null,
-                'status' => $status === 'complete' ? 'paid' : 'failed',
-                'paid_at' => $status === 'complete' ? now() : null,
-                'raw_payload' => $request->all(),
+                'status' => 'failed',
+                'raw_payload' => $payload,
             ]);
         }
 

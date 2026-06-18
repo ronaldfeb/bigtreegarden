@@ -6,8 +6,10 @@ use App\Models\Pamphlet;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\GuestPamphletDraftService;
+use App\Services\PayfastService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
@@ -140,20 +142,41 @@ it('creates an initiated payment record on checkout', function () {
     expect($payment->status)->toBe('initiated');
 });
 
-it('marks payment and pamphlet as paid after successful return', function () {
+it('marks payment and pamphlet as paid after a valid ITN notification', function () {
+    Http::fake([
+        'sandbox.payfast.co.za/eng/query/validate' => Http::response('VALID'),
+    ]);
+
+    config()->set('services.payfast.merchant_id', '10000100');
+    config()->set('services.payfast.merchant_key', '46f0cd694581a');
+    config()->set('services.payfast.passphrase', 'test-passphrase');
+    config()->set('services.payfast.url', 'https://sandbox.payfast.co.za/eng/process');
+
     $pamphlet = Pamphlet::factory()->create([
         'status' => 'pending_payment',
         'paid_at' => null,
     ]);
 
-    Payment::factory()->create([
+    $payment = Payment::factory()->create([
         'pamphlet_id' => $pamphlet->id,
         'status' => 'initiated',
+        'amount_cents' => config('memorial.fixed_price_cents'),
     ]);
 
-    $response = $this->actingAs($pamphlet->user)->get(route('payments.return', $pamphlet));
+    $payload = [
+        'm_payment_id' => $payment->id,
+        'pf_payment_id' => '1089250',
+        'payment_status' => 'COMPLETE',
+        'item_name' => 'Memorial pamphlet',
+        'amount_gross' => number_format($payment->amount_cents / 100, 2, '.', ''),
+        'merchant_id' => config('services.payfast.merchant_id'),
+    ];
 
-    $response->assertRedirect(route('memorial.edit', $pamphlet));
+    $payfastService = app(PayfastService::class);
+    $paramString = $payfastService->buildItnParameterString($payload);
+    $payload['signature'] = md5($paramString.'&passphrase='.urlencode('test-passphrase'));
+
+    $this->post(route('payments.notify', $pamphlet), $payload)->assertOk();
 
     $pamphlet->refresh();
 

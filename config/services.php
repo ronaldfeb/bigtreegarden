@@ -38,7 +38,8 @@ return [
     'payfast' => [
         'merchant_id' => env('PAYFAST_MERCHANT_ID'),
         'merchant_key' => env('PAYFAST_MERCHANT_KEY'),
-        'checkout_url' => env('PAYFAST_CHECKOUT_URL', 'https://sandbox.payfast.co.za/eng/process'),
+        'passphrase' => env('PAYFAST_PASSPHRASE'),
+        'url' => env('PAYFAST_URL', env('PAYFAST_CHECKOUT_URL', 'https://sandbox.payfast.co.za/eng/process')),
     ],
 
 ];

@@ -7,7 +7,7 @@ import type { BreadcrumbItem } from '@/types';
 defineProps<{
     checkoutUrl: string;
     payload: Record<string, string | number | null>;
-    paymentId: number;
+    paymentId: string;
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
