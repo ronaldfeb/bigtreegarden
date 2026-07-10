@@ -2,9 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Enums\MemorialPageStatus;
 use App\Models\MemorialPage;
-use App\Models\Pamphlet;
+use App\Models\PersonOfInterest;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends Factory<MemorialPage>
@@ -12,18 +15,26 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 class MemorialPageFactory extends Factory
 {
     /**
-     * Define the model's default state.
-     *
      * @return array<string, mixed>
      */
     public function definition(): array
     {
         return [
-            'pamphlet_id' => Pamphlet::factory(),
-            'funeral_programme' => $this->faker->paragraph(),
-            'obituary' => $this->faker->paragraph(),
-            'hymns' => $this->faker->paragraph(),
+            'person_of_interest_id' => PersonOfInterest::factory()->hasAttached(
+                User::factory(),
+                ['role' => 'owner'],
+            ),
+            'title' => fake()->sentence(3),
+            'public_slug' => Str::lower((string) Str::ulid()),
+            'status' => MemorialPageStatus::Draft,
+            'active_day_type' => null,
+            'active_day_date' => null,
+            'obituary' => fake()->paragraph(),
+            'funeral_programme' => fake()->paragraph(),
+            'hymns' => fake()->paragraph(),
             'gallery_enabled' => true,
+            'live_comments_enabled' => true,
+            'published_at' => null,
         ];
     }
 }

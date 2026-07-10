@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\Pamphlet;
-use App\Models\Payment;
+use App\Models\MemorialPageMessage;
+use App\Models\MemorialPagePamphlet;
+use App\Models\Subscription;
+use App\Models\Transaction;
 use Illuminate\Support\Facades\Http;
 
 class PayfastService
@@ -11,11 +13,12 @@ class PayfastService
     /**
      * @return array<string, scalar|null>
      */
-    public function buildCheckoutPayload(Pamphlet $pamphlet, Payment $payment): array
+    public function buildCheckoutPayload(MemorialPagePamphlet $pamphlet, Transaction $transaction): array
     {
+        $owner = $pamphlet->owner();
         $itemName = sprintf('Memorial pamphlet for %s', $pamphlet->person_full_name);
-        $amount = number_format(config('memorial.fixed_price_cents') / 100, 2, '.', '');
-        [$nameFirst, $nameLast] = $this->splitName($pamphlet->user->name);
+        $amount = number_format($transaction->amount_cents / 100, 2, '.', '');
+        [$nameFirst, $nameLast] = $this->splitName($owner?->name ?? '');
 
         $data = [
             'merchant_id' => config('services.payfast.merchant_id'),
@@ -25,10 +28,71 @@ class PayfastService
             'notify_url' => route('payments.notify', $pamphlet),
             'name_first' => $nameFirst,
             'name_last' => $nameLast,
-            'email_address' => $pamphlet->user->email,
-            'm_payment_id' => (string) $payment->id,
+            'email_address' => $owner?->email,
+            'm_payment_id' => $transaction->merchant_reference,
             'amount' => $amount,
             'item_name' => $itemName,
+        ];
+
+        $data['signature'] = $this->generateSignature($data, $this->passphrase());
+
+        return $data;
+    }
+
+    /**
+     * @return array<string, scalar|null>
+     */
+    public function buildSubscriptionCheckoutPayload(Subscription $subscription, Transaction $transaction): array
+    {
+        $user = $subscription->user;
+        $package = $subscription->package;
+        $amount = number_format($transaction->amount_cents / 100, 2, '.', '');
+        [$nameFirst, $nameLast] = $this->splitName($user->name);
+
+        $data = [
+            'merchant_id' => config('services.payfast.merchant_id'),
+            'merchant_key' => config('services.payfast.merchant_key'),
+            'return_url' => route('subscriptions.return', $subscription),
+            'cancel_url' => route('subscriptions.cancelled', $subscription),
+            'notify_url' => route('subscriptions.notify', $subscription),
+            'name_first' => $nameFirst,
+            'name_last' => $nameLast,
+            'email_address' => $user->email,
+            'm_payment_id' => $transaction->merchant_reference,
+            'amount' => $amount,
+            'item_name' => sprintf('%s subscription', $package->name),
+            'subscription_type' => 1,
+            'recurring_amount' => $amount,
+            'frequency' => $package->billing_interval === 'annual' ? 6 : 3,
+            'cycles' => 0,
+        ];
+
+        $data['signature'] = $this->generateSignature($data, $this->passphrase());
+
+        return $data;
+    }
+
+    /**
+     * @return array<string, scalar|null>
+     */
+    public function buildFlowerCheckoutPayload(MemorialPageMessage $message, Transaction $transaction): array
+    {
+        $user = $message->authorUser;
+        $amount = number_format($transaction->amount_cents / 100, 2, '.', '');
+        [$nameFirst, $nameLast] = $this->splitName($user?->name ?? '');
+
+        $data = [
+            'merchant_id' => config('services.payfast.merchant_id'),
+            'merchant_key' => config('services.payfast.merchant_key'),
+            'return_url' => route('flowers.return', $message),
+            'cancel_url' => route('flowers.cancelled', $message),
+            'notify_url' => route('flowers.notify', $message),
+            'name_first' => $nameFirst,
+            'name_last' => $nameLast,
+            'email_address' => $user?->email,
+            'm_payment_id' => $transaction->merchant_reference,
+            'amount' => $amount,
+            'item_name' => 'Memorial flowers message',
         ];
 
         $data['signature'] = $this->generateSignature($data, $this->passphrase());
@@ -105,13 +169,13 @@ class PayfastService
     /**
      * @param  array<string, mixed>  $data
      */
-    public function isValidItnAmount(Payment $payment, array $data): bool
+    public function isValidItnAmount(Transaction $transaction, array $data): bool
     {
         if (! isset($data['amount_gross'])) {
             return false;
         }
 
-        $expectedAmount = $payment->amount_cents / 100;
+        $expectedAmount = $transaction->amount_cents / 100;
 
         return abs($expectedAmount - (float) $data['amount_gross']) <= 0.01;
     }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
 import { Facebook, Globe, Instagram, Linkedin } from 'lucide-vue-next';
+import { computed } from 'vue';
 import AmbassadorImageGallery from '@/components/marketing/AmbassadorImageGallery.vue';
 import MarketingLayout from '@/layouts/marketing/MarketingLayout.vue';
 import { home } from '@/routes';

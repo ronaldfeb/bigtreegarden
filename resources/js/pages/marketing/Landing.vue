@@ -5,6 +5,8 @@ import AmbassadorsSection from '@/components/marketing/AmbassadorsSection.vue';
 import FuneralProgrammeExplainer from '@/components/marketing/FuneralProgrammeExplainer.vue';
 import HeroCarousel from '@/components/marketing/HeroCarousel.vue';
 import HeroCta from '@/components/marketing/HeroCta.vue';
+import PartnersSection from '@/components/marketing/PartnersSection.vue';
+import TestimonialsSection from '@/components/marketing/TestimonialsSection.vue';
 import MarketingLayout from '@/layouts/marketing/MarketingLayout.vue';
 
 withDefaults(
@@ -20,10 +22,26 @@ withDefaults(
                 caption?: string | null;
             }>;
         }>;
+        testimonials?: Array<{
+            id: string;
+            name: string;
+            photo_path: string;
+            role_or_location: string | null;
+            body: string;
+            rating: number | null;
+        }>;
+        partners?: Array<{
+            id: string;
+            name: string;
+            logo_path: string;
+            website_url: string | null;
+        }>;
     }>(),
     {
         canRegister: true,
         ambassadors: () => [],
+        testimonials: () => [],
+        partners: () => [],
     },
 );
 
@@ -53,6 +71,10 @@ const appName = computed(() => page.props.name);
         </p>
 
         <FuneralProgrammeExplainer />
+
+        <TestimonialsSection :testimonials="testimonials" />
+
+        <PartnersSection :partners="partners" />
 
         <AmbassadorsSection :ambassadors="ambassadors" />
     </MarketingLayout>

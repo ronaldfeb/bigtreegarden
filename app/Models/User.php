@@ -2,29 +2,26 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Concerns\HasDomainTimestamps;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'phone', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasUuids, Notifiable, TwoFactorAuthenticatable;
+    use HasDomainTimestamps, HasFactory, HasUuids, Notifiable, TwoFactorAuthenticatable;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -34,8 +31,36 @@ class User extends Authenticatable
         ];
     }
 
-    public function pamphlets(): HasMany
+    public function staffUser(): HasOne
     {
-        return $this->hasMany(Pamphlet::class);
+        return $this->hasOne(StaffUser::class);
+    }
+
+    public function personsOfInterest(): BelongsToMany
+    {
+        return $this->belongsToMany(PersonOfInterest::class, 'user_persons_of_interest')
+            ->using(UserPersonOfInterest::class)
+            ->withPivot(['role'])
+            ->withTimestamps();
+    }
+
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    public function activeSubscription(): ?Subscription
+    {
+        return $this->subscriptions()->active()->latest('activated_at')->first();
+    }
+
+    public function hasActiveSubscription(): bool
+    {
+        return $this->subscriptions()->active()->exists();
     }
 }

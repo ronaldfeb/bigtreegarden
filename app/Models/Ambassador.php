@@ -9,9 +9,12 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 #[Fillable([
     'name',
+    'slug',
     'title',
     'description',
     'status',
@@ -19,11 +22,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'handle_facebook',
     'handle_instagram',
     'website_url',
+    'profile_image_path',
+    'sort_order',
 ])]
 class Ambassador extends Model
 {
     /** @use HasFactory<AmbassadorFactory> */
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::creating(function (Ambassador $ambassador): void {
+            if (blank($ambassador->slug)) {
+                $ambassador->slug = Str::slug($ambassador->name);
+            }
+        });
+    }
 
     public function images(): HasMany
     {

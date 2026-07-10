@@ -1,9 +1,11 @@
 <?php
 
-use App\Models\Background;
-use App\Models\BackgroundCollection;
-use App\Models\Pamphlet;
-use App\Models\Payment;
+use App\Enums\PamphletStatus;
+use App\Enums\TransactionStatus;
+use App\Models\MemorialPagePamphlet;
+use App\Models\MemorialPagePamphletBackground;
+use App\Models\MemorialPagePamphletBackgroundCollection;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Services\GuestPamphletDraftService;
 use App\Services\PayfastService;
@@ -18,9 +20,9 @@ it('allows guests to create a draft and view preview before auth', function () {
     Storage::fake('public');
     config()->set('memorial.bypass_payment_for_publish', true);
 
-    $collection = BackgroundCollection::factory()->create(['slug' => 'adults']);
-    $background = Background::factory()->create([
-        'background_collection_id' => $collection->id,
+    $collection = MemorialPagePamphletBackgroundCollection::factory()->create(['slug' => 'adults']);
+    $background = MemorialPagePamphletBackground::factory()->create([
+        'collection_id' => $collection->id,
     ]);
 
     $response = $this->post('/pamphlets', [
@@ -36,12 +38,12 @@ it('allows guests to create a draft and view preview before auth', function () {
         'image' => UploadedFile::fake()->image('memorial.jpg'),
     ]);
 
-    $pamphlet = Pamphlet::query()->first();
+    $pamphlet = MemorialPagePamphlet::query()->first();
 
     expect($pamphlet)->not->toBeNull();
-    expect($pamphlet->status)->toBe('published');
-    expect($pamphlet->user_id)->toBeNull();
-    expect($pamphlet->guest_token_hash)->not->toBeNull();
+    expect($pamphlet->status)->toBe(PamphletStatus::Published);
+    expect($pamphlet->owner())->toBeNull();
+    expect($pamphlet->memorialPage?->personOfInterest?->guest_token_hash)->not->toBeNull();
 
     $response->assertRedirect(route('pamphlets.show', $pamphlet));
     $response->assertCookie('guest_pamphlet_token');
@@ -51,9 +53,9 @@ it('creates draft status when payment bypass is disabled', function () {
     Storage::fake('public');
     config()->set('memorial.bypass_payment_for_publish', false);
 
-    $collection = BackgroundCollection::factory()->create(['slug' => 'adults']);
-    $background = Background::factory()->create([
-        'background_collection_id' => $collection->id,
+    $collection = MemorialPagePamphletBackgroundCollection::factory()->create(['slug' => 'adults']);
+    $background = MemorialPagePamphletBackground::factory()->create([
+        'collection_id' => $collection->id,
     ]);
 
     $this->post('/pamphlets', [
@@ -69,13 +71,12 @@ it('creates draft status when payment bypass is disabled', function () {
         'image' => UploadedFile::fake()->image('memorial.jpg'),
     ]);
 
-    expect(Pamphlet::query()->first()?->status)->toBe('draft');
+    expect(MemorialPagePamphlet::query()->first()?->status)->toBe(PamphletStatus::Draft);
 });
 
 it('redirects guests to login at checkout checkpoint', function () {
-    $pamphlet = Pamphlet::factory()->create([
-        'user_id' => null,
-        'status' => 'draft',
+    $pamphlet = MemorialPagePamphlet::factory()->guest()->create([
+        'status' => PamphletStatus::Draft,
     ]);
 
     $service = app(GuestPamphletDraftService::class);
@@ -87,9 +88,8 @@ it('redirects guests to login at checkout checkpoint', function () {
 });
 
 it('claims guest draft to authenticated user at checkpoint and proceeds to checkout', function () {
-    $pamphlet = Pamphlet::factory()->create([
-        'user_id' => null,
-        'status' => 'draft',
+    $pamphlet = MemorialPagePamphlet::factory()->guest()->create([
+        'status' => PamphletStatus::Draft,
     ]);
     $user = User::factory()->create();
 
@@ -104,23 +104,23 @@ it('claims guest draft to authenticated user at checkpoint and proceeds to check
     $response->assertRedirect(route('payments.checkout', $pamphlet));
 
     $pamphlet->refresh();
-    expect($pamphlet->user_id)->toBe($user->id);
-    expect($pamphlet->status)->toBe('pending_payment');
+    expect($pamphlet->owner()?->is($user))->toBeTrue();
+    expect($pamphlet->status)->toBe(PamphletStatus::PendingPayment);
 });
 
 it('lets authenticated users continue directly to checkout without auth gate', function () {
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'draft',
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::Draft,
     ]);
 
-    $response = $this->actingAs($pamphlet->user)->get(route('pamphlets.continue', $pamphlet));
+    $response = $this->actingAs($pamphlet->owner())->get(route('pamphlets.continue', $pamphlet));
 
     $response->assertRedirect(route('payments.checkout', $pamphlet));
 });
 
 it('prevents guests without token from viewing another draft', function () {
-    $pamphlet = Pamphlet::factory()->create([
-        'user_id' => null,
+    $pamphlet = MemorialPagePamphlet::factory()->guest()->create([
+        'status' => PamphletStatus::Draft,
     ]);
 
     $response = $this->get(route('pamphlets.show', $pamphlet));
@@ -128,21 +128,21 @@ it('prevents guests without token from viewing another draft', function () {
     $response->assertForbidden();
 });
 
-it('creates an initiated payment record on checkout', function () {
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'pending_payment',
+it('creates an initiated transaction record on checkout', function () {
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
     ]);
 
-    $response = $this->actingAs($pamphlet->user)->get(route('payments.checkout', $pamphlet));
+    $response = $this->actingAs($pamphlet->owner())->get(route('payments.checkout', $pamphlet));
 
     $response->assertSuccessful();
 
-    $payment = Payment::query()->first();
-    expect($payment)->not->toBeNull();
-    expect($payment->status)->toBe('initiated');
+    $transaction = Transaction::query()->first();
+    expect($transaction)->not->toBeNull();
+    expect($transaction->status)->toBe(TransactionStatus::Initiated);
 });
 
-it('marks payment and pamphlet as paid after a valid ITN notification', function () {
+it('marks transaction and pamphlet as paid after a valid ITN notification', function () {
     Http::fake([
         'sandbox.payfast.co.za/eng/query/validate' => Http::response('VALID'),
     ]);
@@ -152,23 +152,25 @@ it('marks payment and pamphlet as paid after a valid ITN notification', function
     config()->set('services.payfast.passphrase', 'test-passphrase');
     config()->set('services.payfast.url', 'https://sandbox.payfast.co.za/eng/process');
 
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'pending_payment',
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
         'paid_at' => null,
     ]);
 
-    $payment = Payment::factory()->create([
-        'pamphlet_id' => $pamphlet->id,
-        'status' => 'initiated',
+    $transaction = Transaction::factory()->create([
+        'payable_type' => MemorialPagePamphlet::class,
+        'payable_id' => $pamphlet->id,
+        'user_id' => $pamphlet->owner()?->id,
+        'status' => TransactionStatus::Initiated,
         'amount_cents' => config('memorial.fixed_price_cents'),
     ]);
 
     $payload = [
-        'm_payment_id' => $payment->id,
+        'm_payment_id' => $transaction->merchant_reference,
         'pf_payment_id' => '1089250',
         'payment_status' => 'COMPLETE',
         'item_name' => 'Memorial pamphlet',
-        'amount_gross' => number_format($payment->amount_cents / 100, 2, '.', ''),
+        'amount_gross' => number_format($transaction->amount_cents / 100, 2, '.', ''),
         'merchant_id' => config('services.payfast.merchant_id'),
     ];
 
@@ -180,14 +182,13 @@ it('marks payment and pamphlet as paid after a valid ITN notification', function
 
     $pamphlet->refresh();
 
-    expect($pamphlet->status)->toBe('paid');
-    expect($pamphlet->pamphletQrCode)->not->toBeNull();
-    expect($pamphlet->pamphletQrCode->target_url)->toContain('/memorial/');
+    expect($pamphlet->status)->toBe(PamphletStatus::Paid);
+    expect($pamphlet->memorialPage?->personOfInterest?->qr_code_path)->not->toBeNull();
 });
 
 it('shows public memorial page by slug for paid pamphlets', function () {
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'paid',
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::Paid,
     ]);
 
     $response = $this->get(route('memorial.public.show', $pamphlet->public_slug));
@@ -196,8 +197,8 @@ it('shows public memorial page by slug for paid pamphlets', function () {
 });
 
 it('prevents users from editing pamphlets they do not own', function () {
-    $ownerPamphlet = Pamphlet::factory()->create([
-        'status' => 'paid',
+    $ownerPamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::Paid,
     ]);
     $otherUser = User::factory()->create();
 
@@ -209,11 +210,12 @@ it('prevents users from editing pamphlets they do not own', function () {
 it('removes selected memorial gallery images on update', function () {
     Storage::fake('public');
 
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'paid',
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::Paid,
     ]);
 
-    $memorialPage = $pamphlet->memorialPage()->create([
+    $memorialPage = $pamphlet->memorialPage;
+    $memorialPage->update([
         'funeral_programme' => 'Programme',
         'obituary' => 'Obituary',
         'hymns' => 'Hymns',
@@ -222,19 +224,19 @@ it('removes selected memorial gallery images on update', function () {
     $imageToRemovePath = UploadedFile::fake()->image('remove.jpg')->store('memorial/gallery', 'public');
     $imageToKeepPath = UploadedFile::fake()->image('keep.jpg')->store('memorial/gallery', 'public');
 
-    $imageToRemove = $memorialPage->galleryImages()->create([
+    $imageToRemove = $memorialPage->images()->create([
         'image_path' => $imageToRemovePath,
         'caption' => null,
         'sort_order' => 0,
     ]);
 
-    $imageToKeep = $memorialPage->galleryImages()->create([
+    $imageToKeep = $memorialPage->images()->create([
         'image_path' => $imageToKeepPath,
         'caption' => null,
         'sort_order' => 1,
     ]);
 
-    $response = $this->actingAs($pamphlet->user)->patch("/pamphlets/{$pamphlet->id}/memorial", [
+    $response = $this->actingAs($pamphlet->owner())->patch("/pamphlets/{$pamphlet->id}/memorial", [
         'font_family' => 'Georgia',
         'is_bold' => false,
         'is_italic' => false,
@@ -247,26 +249,26 @@ it('removes selected memorial gallery images on update', function () {
 
     $response->assertRedirect(route('memorial.public.show', $pamphlet->public_slug));
 
-    expect($memorialPage->galleryImages()->whereKey($imageToRemove->id)->exists())->toBeFalse();
-    expect($memorialPage->galleryImages()->whereKey($imageToKeep->id)->exists())->toBeTrue();
+    expect($memorialPage->images()->whereKey($imageToRemove->id)->exists())->toBeFalse();
+    expect($memorialPage->images()->whereKey($imageToKeep->id)->exists())->toBeTrue();
 
     Storage::disk('public')->assertMissing($imageToRemovePath);
     Storage::disk('public')->assertExists($imageToKeepPath);
 });
 
 it('allows an owner to open the print view', function () {
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'published',
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::Published,
     ]);
 
-    $response = $this->actingAs($pamphlet->user)->get(route('pamphlets.print', $pamphlet));
+    $response = $this->actingAs($pamphlet->owner())->get(route('pamphlets.print', $pamphlet));
 
     $response->assertSuccessful();
 });
 
 it('prevents non-owners from opening the print view', function () {
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'published',
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::Published,
     ]);
     $otherUser = User::factory()->create();
 
@@ -275,20 +277,19 @@ it('prevents non-owners from opening the print view', function () {
     $response->assertForbidden();
 });
 
-it('creates a pamphlet qr code when opening print view if missing', function () {
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'published',
+it('creates a person of interest qr code when opening print view if missing', function () {
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::Published,
     ]);
 
-    expect($pamphlet->pamphletQrCode)->toBeNull();
+    expect($pamphlet->memorialPage?->personOfInterest?->qr_code_path)->toBeNull();
 
-    $response = $this->actingAs($pamphlet->user)->get(route('pamphlets.print', $pamphlet));
+    $response = $this->actingAs($pamphlet->owner())->get(route('pamphlets.print', $pamphlet));
 
     $response->assertSuccessful();
 
     $pamphlet->refresh();
 
-    expect($pamphlet->pamphletQrCode)->not->toBeNull();
-    expect($pamphlet->pamphletQrCode->target_url)->toBe(route('memorial.public.show', $pamphlet->public_slug));
-    expect($pamphlet->pamphletQrCode->image_path)->toContain('api.qrserver.com');
+    expect($pamphlet->memorialPage?->personOfInterest?->qr_code_path)->not->toBeNull();
+    expect($pamphlet->memorialPage?->personOfInterest?->qr_code_path)->toContain('api.qrserver.com');
 });

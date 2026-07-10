@@ -1,7 +1,9 @@
 <?php
 
-use App\Models\Pamphlet;
-use App\Models\Payment;
+use App\Enums\PamphletStatus;
+use App\Enums\TransactionStatus;
+use App\Models\MemorialPagePamphlet;
+use App\Models\Transaction;
 use App\Services\PayfastService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -39,37 +41,39 @@ function signItnPayload(array $data): array
  * @param  array<string, mixed>  $overrides
  * @return array<string, mixed>
  */
-function baseItnPayload(Payment $payment, array $overrides = []): array
+function baseItnPayload(Transaction $transaction, array $overrides = []): array
 {
     return array_merge([
-        'm_payment_id' => $payment->id,
+        'm_payment_id' => $transaction->merchant_reference,
         'pf_payment_id' => '1089250',
         'payment_status' => 'COMPLETE',
         'item_name' => 'Memorial pamphlet',
-        'amount_gross' => number_format($payment->amount_cents / 100, 2, '.', ''),
+        'amount_gross' => number_format($transaction->amount_cents / 100, 2, '.', ''),
         'amount_fee' => '-4.60',
-        'amount_net' => number_format(($payment->amount_cents / 100) - 4.60, 2, '.', ''),
+        'amount_net' => number_format(($transaction->amount_cents / 100) - 4.60, 2, '.', ''),
         'merchant_id' => config('services.payfast.merchant_id'),
     ], $overrides);
 }
 
 it('includes a valid signature in the checkout payload', function () {
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'pending_payment',
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
     ]);
 
-    $payment = Payment::factory()->create([
-        'pamphlet_id' => $pamphlet->id,
-        'status' => 'initiated',
+    $transaction = Transaction::factory()->create([
+        'payable_type' => MemorialPagePamphlet::class,
+        'payable_id' => $pamphlet->id,
+        'user_id' => $pamphlet->owner()?->id,
+        'status' => TransactionStatus::Initiated,
         'amount_cents' => config('memorial.fixed_price_cents'),
     ]);
 
     $payfastService = app(PayfastService::class);
-    $payload = $payfastService->buildCheckoutPayload($pamphlet, $payment);
+    $payload = $payfastService->buildCheckoutPayload($pamphlet, $transaction);
 
     expect($payload)->toHaveKey('signature');
     expect($payload['signature'])->toBeString()->not->toBeEmpty();
-    expect($payload['m_payment_id'])->toBe($payment->id);
+    expect($payload['m_payment_id'])->toBe($transaction->merchant_reference);
 
     $signatureFields = $payload;
     unset($signatureFields['signature']);
@@ -82,47 +86,48 @@ it('includes a valid signature in the checkout payload', function () {
     expect($payload['signature'])->toBe($expectedSignature);
 });
 
-it('reuses an initiated payment on repeated checkout visits', function () {
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'pending_payment',
+it('reuses an initiated transaction on repeated checkout visits', function () {
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
     ]);
 
-    $this->actingAs($pamphlet->user)->get(route('payments.checkout', $pamphlet));
-    $this->actingAs($pamphlet->user)->get(route('payments.checkout', $pamphlet));
+    $this->actingAs($pamphlet->owner())->get(route('payments.checkout', $pamphlet));
+    $this->actingAs($pamphlet->owner())->get(route('payments.checkout', $pamphlet));
 
-    expect(Payment::query()->count())->toBe(1);
+    expect(Transaction::query()->count())->toBe(1);
 });
 
-it('fulfills payment and pamphlet when a valid ITN is received', function () {
+it('fulfills transaction and pamphlet when a valid ITN is received', function () {
     Http::fake([
         'sandbox.payfast.co.za/eng/query/validate' => Http::response('VALID'),
     ]);
 
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'pending_payment',
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
         'paid_at' => null,
     ]);
 
-    $payment = Payment::factory()->create([
-        'pamphlet_id' => $pamphlet->id,
-        'status' => 'initiated',
+    $transaction = Transaction::factory()->create([
+        'payable_type' => MemorialPagePamphlet::class,
+        'payable_id' => $pamphlet->id,
+        'user_id' => $pamphlet->owner()?->id,
+        'status' => TransactionStatus::Initiated,
         'amount_cents' => config('memorial.fixed_price_cents'),
     ]);
 
-    $payload = signItnPayload(baseItnPayload($payment));
+    $payload = signItnPayload(baseItnPayload($transaction));
 
     $response = $this->post(route('payments.notify', $pamphlet), $payload);
 
     $response->assertOk();
 
     $pamphlet->refresh();
-    $payment->refresh();
+    $transaction->refresh();
 
-    expect($payment->status)->toBe('paid');
-    expect($payment->provider_payment_id)->toBe('1089250');
-    expect($pamphlet->status)->toBe('paid');
-    expect($pamphlet->pamphletQrCode)->not->toBeNull();
-    expect($pamphlet->pamphletQrCode->target_url)->toContain('/memorial/');
+    expect($transaction->status)->toBe(TransactionStatus::Complete);
+    expect($transaction->provider_payment_id)->toBe('1089250');
+    expect($pamphlet->status)->toBe(PamphletStatus::Paid);
+    expect($pamphlet->memorialPage?->personOfInterest?->qr_code_path)->not->toBeNull();
 });
 
 it('does not fulfill when the ITN signature is invalid', function () {
@@ -130,17 +135,19 @@ it('does not fulfill when the ITN signature is invalid', function () {
         'sandbox.payfast.co.za/eng/query/validate' => Http::response('VALID'),
     ]);
 
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'pending_payment',
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
     ]);
 
-    $payment = Payment::factory()->create([
-        'pamphlet_id' => $pamphlet->id,
-        'status' => 'initiated',
+    $transaction = Transaction::factory()->create([
+        'payable_type' => MemorialPagePamphlet::class,
+        'payable_id' => $pamphlet->id,
+        'user_id' => $pamphlet->owner()?->id,
+        'status' => TransactionStatus::Initiated,
         'amount_cents' => config('memorial.fixed_price_cents'),
     ]);
 
-    $payload = baseItnPayload($payment);
+    $payload = baseItnPayload($transaction);
     $payload['signature'] = 'invalid-signature';
 
     $response = $this->post(route('payments.notify', $pamphlet), $payload);
@@ -148,11 +155,11 @@ it('does not fulfill when the ITN signature is invalid', function () {
     $response->assertOk();
 
     $pamphlet->refresh();
-    $payment->refresh();
+    $transaction->refresh();
 
-    expect($payment->status)->toBe('initiated');
-    expect($pamphlet->status)->toBe('pending_payment');
-    expect($pamphlet->pamphletQrCode)->toBeNull();
+    expect($transaction->status)->toBe(TransactionStatus::Initiated);
+    expect($pamphlet->status)->toBe(PamphletStatus::PendingPayment);
+    expect($pamphlet->memorialPage?->personOfInterest?->qr_code_path)->toBeNull();
 });
 
 it('does not fulfill when the ITN amount does not match', function () {
@@ -160,17 +167,19 @@ it('does not fulfill when the ITN amount does not match', function () {
         'sandbox.payfast.co.za/eng/query/validate' => Http::response('VALID'),
     ]);
 
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'pending_payment',
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
     ]);
 
-    $payment = Payment::factory()->create([
-        'pamphlet_id' => $pamphlet->id,
-        'status' => 'initiated',
+    $transaction = Transaction::factory()->create([
+        'payable_type' => MemorialPagePamphlet::class,
+        'payable_id' => $pamphlet->id,
+        'user_id' => $pamphlet->owner()?->id,
+        'status' => TransactionStatus::Initiated,
         'amount_cents' => config('memorial.fixed_price_cents'),
     ]);
 
-    $payload = signItnPayload(baseItnPayload($payment, [
+    $payload = signItnPayload(baseItnPayload($transaction, [
         'amount_gross' => '1.00',
     ]));
 
@@ -179,39 +188,41 @@ it('does not fulfill when the ITN amount does not match', function () {
     $response->assertOk();
 
     $pamphlet->refresh();
-    $payment->refresh();
+    $transaction->refresh();
 
-    expect($payment->status)->toBe('initiated');
-    expect($pamphlet->status)->toBe('pending_payment');
+    expect($transaction->status)->toBe(TransactionStatus::Initiated);
+    expect($pamphlet->status)->toBe(PamphletStatus::PendingPayment);
 });
 
 it('does not mark a pamphlet as paid from the return URL alone', function () {
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'pending_payment',
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
         'paid_at' => null,
     ]);
 
-    Payment::factory()->create([
-        'pamphlet_id' => $pamphlet->id,
-        'status' => 'initiated',
+    Transaction::factory()->create([
+        'payable_type' => MemorialPagePamphlet::class,
+        'payable_id' => $pamphlet->id,
+        'user_id' => $pamphlet->owner()?->id,
+        'status' => TransactionStatus::Initiated,
     ]);
 
-    $response = $this->actingAs($pamphlet->user)->get(route('payments.return', $pamphlet));
+    $response = $this->actingAs($pamphlet->owner())->get(route('payments.return', $pamphlet));
 
     $response->assertRedirect(route('memorial.edit', $pamphlet));
 
     $pamphlet->refresh();
 
-    expect($pamphlet->status)->toBe('pending_payment');
-    expect($pamphlet->pamphletQrCode)->toBeNull();
+    expect($pamphlet->status)->toBe(PamphletStatus::PendingPayment);
+    expect($pamphlet->memorialPage?->personOfInterest?->qr_code_path)->toBeNull();
 });
 
 it('redirects paid pamphlets away from checkout', function () {
-    $pamphlet = Pamphlet::factory()->create([
-        'status' => 'paid',
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::Paid,
     ]);
 
-    $response = $this->actingAs($pamphlet->user)->get(route('payments.checkout', $pamphlet));
+    $response = $this->actingAs($pamphlet->owner())->get(route('payments.checkout', $pamphlet));
 
     $response->assertRedirect(route('memorial.edit', $pamphlet));
 });

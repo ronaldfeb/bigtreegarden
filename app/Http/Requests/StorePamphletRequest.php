@@ -33,7 +33,7 @@ class StorePamphletRequest extends FormRequest
             'image_shape' => ['required', 'string', Rule::in(['circle', 'square'])],
             'image_crop_mode' => ['required', 'string', Rule::in(['cover', 'contain'])],
             'short_text' => ['required', 'string', 'max:2000'],
-            'background_id' => ['required', 'uuid', Rule::exists('backgrounds', 'id')],
+            'background_id' => ['required', 'uuid', Rule::exists('memorial_page_pamphlet_backgrounds', 'id')],
             'image' => ['required', 'image', 'max:5120'],
         ];
     }

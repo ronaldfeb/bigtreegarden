@@ -2,7 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Pamphlet;
+use App\Models\MemorialPagePamphlet;
+use App\Models\PersonOfInterest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -13,11 +14,12 @@ class GuestPamphletDraftService
 {
     private const COOKIE_NAME = 'guest_pamphlet_token';
 
-    public function issueTokenForPamphlet(Pamphlet $pamphlet): string
+    public function issueTokenForPamphlet(MemorialPagePamphlet $pamphlet): string
     {
         $token = Str::random(64);
+        $personOfInterest = $this->personOfInterestForPamphlet($pamphlet);
 
-        $pamphlet->update([
+        $personOfInterest?->update([
             'guest_token_hash' => Hash::make($token),
             'guest_token_expires_at' => now()->addDays(7),
         ]);
@@ -45,31 +47,54 @@ class GuestPamphletDraftService
         return cookie()->forget(self::COOKIE_NAME);
     }
 
-    public function requestOwnsPamphlet(Request $request, Pamphlet $pamphlet): bool
+    public function requestOwnsPamphlet(Request $request, MemorialPagePamphlet $pamphlet): bool
     {
-        if ($request->user() !== null && $pamphlet->user_id === $request->user()->id) {
+        $owner = $pamphlet->owner();
+
+        if ($request->user() !== null && $owner !== null && $owner->is($request->user())) {
             return true;
+        }
+
+        $personOfInterest = $this->personOfInterestForPamphlet($pamphlet);
+
+        if ($personOfInterest === null) {
+            return false;
         }
 
         $token = (string) $request->cookie(self::COOKIE_NAME, '');
 
-        if ($token === '' || blank($pamphlet->guest_token_hash)) {
+        if ($token === '' || blank($personOfInterest->guest_token_hash)) {
             return false;
         }
 
-        if ($pamphlet->guest_token_expires_at !== null && $pamphlet->guest_token_expires_at->isPast()) {
+        if ($personOfInterest->guest_token_expires_at !== null && $personOfInterest->guest_token_expires_at->isPast()) {
             return false;
         }
 
-        return Hash::check($token, $pamphlet->guest_token_hash);
+        return Hash::check($token, $personOfInterest->guest_token_hash);
     }
 
-    public function claimPamphletToUser(Pamphlet $pamphlet, User $user): void
+    public function claimPamphletToUser(MemorialPagePamphlet $pamphlet, User $user): void
     {
-        $pamphlet->update([
-            'user_id' => $user->id,
+        $personOfInterest = $this->personOfInterestForPamphlet($pamphlet);
+
+        if ($personOfInterest === null) {
+            return;
+        }
+
+        $personOfInterest->update([
+            'created_by_user_id' => $user->id,
             'guest_token_hash' => null,
             'guest_token_expires_at' => null,
         ]);
+
+        $personOfInterest->users()->syncWithoutDetaching([
+            $user->id => ['role' => 'owner'],
+        ]);
+    }
+
+    private function personOfInterestForPamphlet(MemorialPagePamphlet $pamphlet): ?PersonOfInterest
+    {
+        return $pamphlet->memorialPage?->personOfInterest;
     }
 }

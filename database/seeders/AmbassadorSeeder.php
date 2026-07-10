@@ -29,6 +29,7 @@ class AmbassadorSeeder extends Seeder
 
         $ambassador = Ambassador::query()->create([
             'name' => 'Somizi Mhlongo',
+            'slug' => 'somizi-mhlongo',
             'title' => 'Brand Ambassador, Big Tree Garden',
             'description' => <<<'TEXT'
 "You Basically Become Immortal"

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasDomainTimestamps;
 use Database\Factories\AmbassadorImageFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -14,7 +15,14 @@ use Illuminate\Support\Facades\Storage;
 class AmbassadorImage extends Model
 {
     /** @use HasFactory<AmbassadorImageFactory> */
-    use HasFactory, HasUuids;
+    use HasDomainTimestamps, HasFactory, HasUuids;
+
+    protected function casts(): array
+    {
+        return [
+            'sort_order' => 'integer',
+        ];
+    }
 
     public function ambassador(): BelongsTo
     {

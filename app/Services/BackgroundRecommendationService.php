@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Background;
+use App\Models\MemorialPagePamphletBackground;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -20,21 +20,21 @@ class BackgroundRecommendationService
     }
 
     /**
-     * @return Collection<int, Background>
+     * @return Collection<int, MemorialPagePamphletBackground>
      */
     public function backgroundsWithRecommendation(string $dateOfBirth): Collection
     {
         $recommendedSlug = $this->recommendedCollectionSlug($dateOfBirth);
 
-        return Background::query()
-            ->with('backgroundCollection')
+        return MemorialPagePamphletBackground::query()
+            ->with('collection')
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->get()
-            ->map(function (Background $background) use ($recommendedSlug): Background {
+            ->map(function (MemorialPagePamphletBackground $background) use ($recommendedSlug): MemorialPagePamphletBackground {
                 $background->setAttribute(
                     'is_recommended',
-                    $background->backgroundCollection?->slug === $recommendedSlug
+                    $background->collection?->slug === $recommendedSlug
                 );
 
                 return $background;

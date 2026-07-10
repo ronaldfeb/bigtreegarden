@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Ambassador;
 use App\Models\AmbassadorImage;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends Factory<Ambassador>
@@ -18,8 +19,11 @@ class AmbassadorFactory extends Factory
      */
     public function definition(): array
     {
+        $name = fake()->name();
+
         return [
-            'name' => fake()->name(),
+            'name' => $name,
+            'slug' => Str::slug($name).'-'.fake()->unique()->numberBetween(1, 9999),
             'title' => fake()->jobTitle(),
             'description' => fake()->optional()->paragraphs(2, true),
             'status' => config('constants.ambassador.status.active'),

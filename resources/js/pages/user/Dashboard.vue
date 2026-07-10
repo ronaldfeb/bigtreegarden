@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Form, Head, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { dashboard } from '@/routes';
+import { approve, reject } from '@/routes/messages';
 import type { BreadcrumbItem } from '@/types';
 
 defineProps<{
@@ -13,6 +14,15 @@ defineProps<{
         date_of_birth: string | null;
         date_of_passing: string | null;
         background_asset_path: string | null;
+    }>;
+    pendingMessages: Array<{
+        id: string;
+        author_name: string | null;
+        memorial_page_title: string | null;
+        context: string;
+        body_excerpt: string;
+        created_at: string | null;
+        transaction_complete: boolean | null;
     }>;
 }>();
 
@@ -36,6 +46,72 @@ const breadcrumbs: BreadcrumbItem[] = [
                 <p class="mt-1 text-muted-foreground text-sm">
                     Manage and review all your memorial pamphlets.
                 </p>
+            </div>
+
+            <div class="rounded-xl border border-sidebar-border/70 p-6 dark:border-sidebar-border">
+                <div class="mb-4">
+                    <h2 class="font-semibold text-lg">Pending messages</h2>
+                    <p class="mt-1 text-muted-foreground text-sm">
+                        Review messages awaiting approval on your memorial pages.
+                    </p>
+                </div>
+
+                <div
+                    v-if="pendingMessages.length === 0"
+                    class="rounded-lg border border-dashed border-border p-8 text-center"
+                >
+                    <p class="font-medium text-sm">No pending messages</p>
+                    <p class="mt-1 text-muted-foreground text-sm">
+                        Messages posted to your memorial pages will appear here for review.
+                    </p>
+                </div>
+
+                <ul v-else class="space-y-3">
+                    <li
+                        v-for="message in pendingMessages"
+                        :key="message.id"
+                        class="rounded-lg border border-border p-4"
+                    >
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="min-w-0 space-y-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <p class="font-medium text-sm">{{ message.author_name ?? 'Unknown author' }}</p>
+                                    <span class="rounded-full border border-border px-2 py-0.5 text-xs capitalize">
+                                        {{ message.context.replace('_', ' ') }}
+                                    </span>
+                                    <span
+                                        v-if="message.transaction_complete === false"
+                                        class="rounded-full border border-border px-2 py-0.5 text-muted-foreground text-xs"
+                                    >
+                                        Payment incomplete
+                                    </span>
+                                </div>
+                                <p class="text-muted-foreground text-sm">{{ message.body_excerpt }}</p>
+                                <p class="text-muted-foreground text-xs">
+                                    {{ message.memorial_page_title ?? '—' }} · {{ message.created_at ?? '—' }}
+                                </p>
+                            </div>
+                            <div class="flex shrink-0 items-center gap-2">
+                                <Form v-bind="approve.form(message.id)">
+                                    <button
+                                        type="submit"
+                                        class="inline-flex rounded-md bg-primary px-3 py-1.5 text-primary-foreground text-sm"
+                                    >
+                                        Approve
+                                    </button>
+                                </Form>
+                                <Form v-bind="reject.form(message.id)">
+                                    <button
+                                        type="submit"
+                                        class="inline-flex rounded-md border border-border px-3 py-1.5 text-sm"
+                                    >
+                                        Reject
+                                    </button>
+                                </Form>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
             </div>
 
             <div class="rounded-xl border border-sidebar-border/70 p-6 dark:border-sidebar-border">

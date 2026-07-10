@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\Pamphlet;
-use App\Models\Payment;
+use App\Enums\PamphletStatus;
+use App\Enums\TransactionStatus;
+use App\Models\MemorialPagePamphlet;
+use App\Models\Transaction;
 
 class PamphletPaymentFulfillmentService
 {
@@ -12,30 +14,40 @@ class PamphletPaymentFulfillmentService
     /**
      * @param  array<string, mixed>  $rawPayload
      */
-    public function fulfill(Pamphlet $pamphlet, Payment $payment, array $rawPayload = [], ?string $providerPaymentId = null): void
-    {
-        if (in_array($pamphlet->status, ['paid', 'published'], true)) {
+    public function fulfill(
+        MemorialPagePamphlet $pamphlet,
+        Transaction $transaction,
+        array $rawPayload = [],
+        ?string $providerPaymentId = null,
+    ): void {
+        if (in_array($pamphlet->status, [PamphletStatus::Paid, PamphletStatus::Published], true)) {
             return;
         }
 
-        $payment->update([
+        $transaction->update([
             'provider_payment_id' => $providerPaymentId,
-            'status' => 'paid',
+            'status' => TransactionStatus::Complete,
             'paid_at' => now(),
             'raw_payload' => $rawPayload,
         ]);
 
         $pamphlet->update([
-            'status' => 'paid',
+            'status' => PamphletStatus::Paid,
             'paid_at' => now(),
         ]);
 
-        $targetUrl = route('memorial.public.show', $pamphlet->public_slug);
+        $memorialPage = $pamphlet->memorialPage;
+        $personOfInterest = $memorialPage?->personOfInterest;
 
-        $pamphlet->pamphletQrCode()->updateOrCreate([], [
-            'target_url' => $targetUrl,
-            'image_path' => $this->qrCodeService->imageUrlForPamphlet($pamphlet),
-            'generated_at' => now(),
+        if ($memorialPage === null || $personOfInterest === null) {
+            return;
+        }
+
+        $targetUrl = route('memorial.public.show', $memorialPage->public_slug);
+
+        $personOfInterest->update([
+            'qr_code_path' => $this->qrCodeService->imageUrlForTarget($targetUrl),
+            'qr_generated_at' => now(),
         ]);
     }
 }

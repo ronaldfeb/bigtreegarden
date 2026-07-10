@@ -2,17 +2,14 @@
 
 namespace Database\Seeders;
 
-use App\Models\Background;
-use App\Models\BackgroundCollection;
+use App\Models\MemorialPagePamphletBackground;
+use App\Models\MemorialPagePamphletBackgroundCollection;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
 class BackgroundCatalogSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $collections = collect([
@@ -20,7 +17,7 @@ class BackgroundCatalogSeeder extends Seeder
             ['slug' => 'teens', 'name' => 'Teens', 'description' => '13 to 18 years'],
             ['slug' => 'adults', 'name' => 'Adults', 'description' => '19 years and above'],
         ])->mapWithKeys(fn (array $collection): array => [
-            $collection['slug'] => BackgroundCollection::query()->updateOrCreate(
+            $collection['slug'] => MemorialPagePamphletBackgroundCollection::query()->updateOrCreate(
                 ['slug' => $collection['slug']],
                 $collection
             ),
@@ -43,10 +40,10 @@ class BackgroundCatalogSeeder extends Seeder
                     str_contains($normalizedPath, 'teens') ? 'teens' : 'adults'
                 );
 
-                Background::query()->updateOrCreate(
-                    ['asset_path' => $relativePath],
+                MemorialPagePamphletBackground::query()->updateOrCreate(
+                    ['image_path' => $relativePath],
                     [
-                        'background_collection_id' => $collections[$slug]->id,
+                        'collection_id' => $collections[$slug]->id,
                         'name' => Str::of(pathinfo($absolutePath, PATHINFO_FILENAME))
                             ->replace(['_', '-'], ' ')
                             ->title()
