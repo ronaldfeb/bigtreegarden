@@ -15,6 +15,7 @@ const props = defineProps<{
         title: string;
         person_full_name: string | null;
         public_slug: string;
+        sections: Array<{ title: string; body: string | null }>;
     };
     isActiveDay: boolean;
     canPost: boolean;
@@ -27,6 +28,9 @@ const props = defineProps<{
 
 const page = usePage();
 const isAuthenticated = computed(() => Boolean((page.props.auth as { user: unknown } | undefined)?.user));
+const programmeSections = computed(() =>
+    props.memorialPage.sections.filter((section) => (section.body ?? '').trim() !== ''),
+);
 
 const messages = ref<LiveMessage[]>([]);
 const feedElement = ref<HTMLElement | null>(null);
@@ -136,6 +140,29 @@ const formatTime = (value: string | null): string => {
         </header>
 
         <main class="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-6">
+            <details
+                v-if="programmeSections.length > 0"
+                class="group mb-4 rounded-2xl border border-border bg-card shadow-warm-sm"
+            >
+                <summary
+                    class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-foreground [&::-webkit-details-marker]:hidden"
+                >
+                    <span class="font-medium text-sm">Service programme</span>
+                    <span
+                        class="shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180"
+                        aria-hidden="true"
+                    >
+                        ⌄
+                    </span>
+                </summary>
+                <div class="space-y-4 border-t border-border/60 px-4 py-4">
+                    <div v-for="section in programmeSections" :key="section.title">
+                        <p class="text-eyebrow text-gold">{{ section.title }}</p>
+                        <p class="mt-1 whitespace-pre-wrap text-foreground text-sm">{{ section.body }}</p>
+                    </div>
+                </div>
+            </details>
+
             <div
                 v-if="!isActiveDay"
                 class="rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground text-sm"

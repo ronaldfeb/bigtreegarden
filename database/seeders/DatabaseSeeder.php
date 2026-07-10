@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             ContentSeeder::class,
             SubscriptionPackageSeeder::class,
             TestimonialSeeder::class,
+            PartnerSeeder::class,
             BackgroundCatalogSeeder::class,
             AmbassadorSeeder::class,
             DemoPersonasSeeder::class,

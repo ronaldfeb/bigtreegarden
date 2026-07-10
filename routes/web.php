@@ -6,6 +6,7 @@ use App\Http\Controllers\Marketing\BlogController;
 use App\Http\Controllers\Marketing\HelpCenterController;
 use App\Http\Controllers\Marketing\LandingController;
 use App\Http\Controllers\Marketing\MarketingAdvertRedirectController;
+use App\Http\Controllers\Marketing\PartnerDirectoryController;
 use App\Http\Controllers\Marketing\PolicyController;
 use App\Http\Controllers\Marketing\PricingController;
 use App\Http\Controllers\Marketing\ServiceProviderDirectoryController;
@@ -34,6 +35,7 @@ Route::get('/help/{helpCenterTopic:slug}/{helpCenterArticle:slug}', [HelpCenterC
 Route::get('/terms-of-service', [PolicyController::class, 'termsOfService'])->name('policies.terms');
 Route::get('/privacy-policy', [PolicyController::class, 'privacyPolicy'])->name('policies.privacy');
 Route::get('/about-us', [PolicyController::class, 'aboutUs'])->name('policies.about');
+Route::get('/partners', [PartnerDirectoryController::class, 'index'])->name('partners.index');
 Route::get('/providers', [ServiceProviderDirectoryController::class, 'index'])->name('providers.index');
 Route::get('/providers/{serviceProvider:slug}', [ServiceProviderDirectoryController::class, 'show'])->name('providers.show');
 Route::get('/a/{code}', MarketingAdvertRedirectController::class)->name('marketing.adverts.redirect');

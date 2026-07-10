@@ -5,6 +5,7 @@ import { home, pricing } from '@/routes';
 import blog from '@/routes/blog';
 import help from '@/routes/help';
 import { create } from '@/routes/pamphlets';
+import partners from '@/routes/partners';
 import policies from '@/routes/policies';
 import providers from '@/routes/providers';
 
@@ -33,6 +34,7 @@ const columns = [
         heading: 'Company',
         links: [
             { label: 'About us', href: policies.about() },
+            { label: 'Our partners', href: partners.index() },
             { label: 'Terms of service', href: policies.terms() },
             { label: 'Privacy policy', href: policies.privacy() },
         ],

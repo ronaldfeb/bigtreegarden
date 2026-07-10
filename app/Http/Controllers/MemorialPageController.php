@@ -24,7 +24,7 @@ class MemorialPageController extends Controller
 
         $pamphlet->load([
             'style',
-            'memorialPage.sections',
+            'memorialPage.sections' => fn ($query) => $query->orderBy('sort_order'),
             'memorialPage.images',
             'memorialPage.personOfInterest',
         ]);
@@ -54,9 +54,6 @@ class MemorialPageController extends Controller
 
         $memorialPage = $pamphlet->memorialPage()->updateOrCreate([], [
             'title' => $pamphlet->heading,
-            'funeral_programme' => $validated['funeral_programme'] ?? null,
-            'obituary' => $validated['obituary'] ?? null,
-            'hymns' => $validated['hymns'] ?? null,
         ]);
 
         $removeGalleryImageIds = collect($validated['remove_gallery_image_ids'] ?? [])
@@ -75,13 +72,37 @@ class MemorialPageController extends Controller
             }
         }
 
-        $memorialPage->sections()->delete();
-        foreach ($validated['additional_sections'] ?? [] as $index => $section) {
-            $memorialPage->sections()->create([
+        $removeSectionIds = collect($validated['remove_section_ids'] ?? [])
+            ->filter(static fn (mixed $value): bool => is_string($value) && $value !== '')
+            ->unique()
+            ->values();
+
+        if ($removeSectionIds->isNotEmpty()) {
+            $memorialPage->sections()
+                ->whereIn('id', $removeSectionIds)
+                ->get()
+                ->each
+                ->delete();
+        }
+
+        foreach ($validated['sections'] ?? [] as $index => $section) {
+            $sectionId = $section['id'] ?? null;
+            $attributes = [
                 'title' => $section['title'],
-                'body' => $section['content'] ?? '',
+                'body' => $section['body'] ?? '',
                 'sort_order' => $index,
-            ]);
+            ];
+
+            if ($sectionId !== null && $sectionId !== '') {
+                $memorialPage->sections()
+                    ->whereKey($sectionId)
+                    ->first()
+                    ?->update($attributes);
+
+                continue;
+            }
+
+            $memorialPage->sections()->create($attributes);
         }
 
         $existingSortOrder = (int) $memorialPage->images()->max('sort_order');
@@ -144,7 +165,7 @@ class MemorialPageController extends Controller
         $memorialPage = MemorialPage::query()
             ->with([
                 'pamphlet.style',
-                'sections',
+                'sections' => fn ($query) => $query->orderBy('sort_order'),
                 'images',
                 'personOfInterest',
             ])
@@ -187,14 +208,11 @@ class MemorialPageController extends Controller
                 'image_path' => $personOfInterest->qr_code_path,
             ] : null,
             'memorial_page' => $memorialPage ? [
-                'funeral_programme' => $memorialPage->funeral_programme,
-                'obituary' => $memorialPage->obituary,
-                'hymns' => $memorialPage->hymns,
                 'gallery_images' => $memorialPage->images,
-                'additional_sections' => $memorialPage->sections->map(fn ($section): array => [
+                'sections' => $memorialPage->sections->map(fn ($section): array => [
                     'id' => $section->id,
                     'title' => $section->title,
-                    'content' => $section->body,
+                    'body' => $section->body,
                     'sort_order' => $section->sort_order,
                 ]),
             ] : null,
@@ -243,17 +261,17 @@ class MemorialPageController extends Controller
                 'image_path' => $memorialPage->personOfInterest->qr_code_path,
             ] : null,
             'memorial_page' => [
-                'funeral_programme' => $memorialPage->funeral_programme,
-                'obituary' => $memorialPage->obituary,
-                'hymns' => $memorialPage->hymns,
                 'gallery_enabled' => $memorialPage->gallery_enabled,
                 'gallery_images' => $memorialPage->images,
-                'additional_sections' => $memorialPage->sections->map(fn ($section): array => [
-                    'id' => $section->id,
-                    'title' => $section->title,
-                    'content' => $section->body,
-                    'sort_order' => $section->sort_order,
-                ]),
+                'sections' => $memorialPage->sections
+                    ->where('is_visible', true)
+                    ->values()
+                    ->map(fn ($section): array => [
+                        'id' => $section->id,
+                        'title' => $section->title,
+                        'body' => $section->body,
+                        'sort_order' => $section->sort_order,
+                    ]),
             ],
             'flower_messages' => $flowerMessages->map(fn (MemorialPageMessage $message): array => [
                 'id' => $message->id,

@@ -12,6 +12,7 @@ const props = defineProps<{
         date_format: 'd M Y' | 'd/m/Y' | 'Y-m-d' | 'j F Y' | string;
         short_text: string;
         uploaded_image_path: string;
+        uploaded_image_url: string | null;
         image_shape: 'circle' | 'square';
         image_crop_mode: 'cover' | 'contain';
         background_asset_path: string | null;
@@ -115,8 +116,12 @@ const handlePrint = (): void => {
 
                     <div class="mx-auto w-full max-w-4xl space-y-5 rounded-xl bg-white/55 p-6 text-center">
                         <div :class="memorialImageContainerClasses">
-                            <img :src="`/storage/${pamphlet.uploaded_image_path}`" alt="Memorial image"
-                                :class="memorialImageClasses" />
+                            <img
+                                v-if="pamphlet.uploaded_image_url"
+                                :src="pamphlet.uploaded_image_url"
+                                alt="Memorial image"
+                                :class="memorialImageClasses"
+                            />
                         </div>
 
                         <p class="mx-auto max-w-3xl whitespace-pre-wrap text-sm leading-relaxed md:text-base"

@@ -24,13 +24,21 @@ class MemorialPageLiveController extends Controller
     public function show(string $slug): InertiaResponse
     {
         $memorialPage = $this->resolvePublishedMemorialPage($slug);
-        $memorialPage->loadMissing('personOfInterest');
+        $memorialPage->loadMissing(['personOfInterest', 'sections']);
 
         return Inertia::render('memorial/Live', [
             'memorialPage' => [
                 'title' => $memorialPage->title,
                 'person_full_name' => $memorialPage->personOfInterest?->display_name,
                 'public_slug' => $memorialPage->public_slug,
+                'sections' => $memorialPage->sections
+                    ->where('is_visible', true)
+                    ->sortBy('sort_order')
+                    ->values()
+                    ->map(fn ($section): array => [
+                        'title' => $section->title,
+                        'body' => $section->body,
+                    ]),
             ],
             'isActiveDay' => $this->isActiveDay($memorialPage),
             'canPost' => request()->user() !== null && $this->isActiveDay($memorialPage),

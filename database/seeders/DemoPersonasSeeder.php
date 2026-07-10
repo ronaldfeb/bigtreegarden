@@ -106,13 +106,36 @@ class DemoPersonasSeeder extends Seeder
                 'status' => MemorialPageStatus::Published,
                 'active_day_date' => now()->toDateString(),
                 'live_comments_enabled' => true,
-                'obituary' => 'James Morrison was a devoted husband, father, and community leader who touched countless lives.',
-                'funeral_programme' => "10:00 — Arrival\n10:30 — Opening hymn\n11:00 — Tributes\n12:00 — Committal",
-                'hymns' => "Amazing Grace\nAbide With Me",
                 'gallery_enabled' => true,
                 'published_at' => now(),
             ],
         );
+
+        $demoSections = [
+            [
+                'title' => 'Obituary',
+                'body' => 'James Morrison was a devoted husband, father, and community leader who touched countless lives.',
+            ],
+            [
+                'title' => 'Funeral Programme',
+                'body' => "10:00 — Arrival\n10:30 — Opening hymn\n11:00 — Tributes\n12:00 — Committal",
+            ],
+            [
+                'title' => 'Hymns',
+                'body' => "Amazing Grace\nAbide With Me",
+            ],
+        ];
+
+        foreach ($demoSections as $sortOrder => $demoSection) {
+            $memorialPage->sections()->updateOrCreate(
+                ['title' => $demoSection['title']],
+                [
+                    'body' => $demoSection['body'],
+                    'sort_order' => $sortOrder,
+                    'is_visible' => true,
+                ],
+            );
+        }
 
         $pamphlet = MemorialPagePamphlet::query()->updateOrCreate(
             ['memorial_page_id' => $memorialPage->id],

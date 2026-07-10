@@ -13,6 +13,7 @@ use App\Services\BackgroundRecommendationService;
 use App\Services\GuestPamphletDraftService;
 use App\Services\QrCodeService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -147,6 +148,7 @@ class PamphletController extends Controller
                 'date_format' => $pamphlet->date_format,
                 'short_text' => $pamphlet->short_text,
                 'uploaded_image_path' => $pamphlet->uploaded_image_path,
+                'uploaded_image_url' => $this->publicStorageUrl($pamphlet->uploaded_image_path),
                 'image_shape' => $pamphlet->image_shape,
                 'image_crop_mode' => $pamphlet->image_crop_mode,
                 'background_asset_path' => $pamphlet->background?->asset_path,
@@ -175,6 +177,7 @@ class PamphletController extends Controller
             'image_crop_mode' => $pamphlet->image_crop_mode,
             'short_text' => $pamphlet->short_text,
             'uploaded_image_path' => $pamphlet->uploaded_image_path,
+            'uploaded_image_url' => $this->publicStorageUrl($pamphlet->uploaded_image_path),
             'public_slug' => $pamphlet->public_slug,
             'status' => $pamphlet->status?->value ?? $pamphlet->status,
             'paid_at' => optional($pamphlet->paid_at)?->toIso8601String(),
@@ -185,6 +188,15 @@ class PamphletController extends Controller
                 'image_path' => $pamphlet->memorialPage->personOfInterest->qr_code_path,
             ] : null,
         ];
+    }
+
+    private function publicStorageUrl(?string $path): ?string
+    {
+        if ($path === null || $path === '') {
+            return null;
+        }
+
+        return Storage::disk('public')->url($path);
     }
 
     /**

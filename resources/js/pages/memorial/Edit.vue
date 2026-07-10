@@ -8,14 +8,17 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 
-defineProps<{
+type EditableSection = {
+    id: string | null;
+    title: string;
+    body: string;
+};
+
+const props = defineProps<{
     pamphlet: {
         id: string;
         memorial_page?: {
-            funeral_programme?: string | null;
-            obituary?: string | null;
-            hymns?: string | null;
-            additional_sections?: Array<{ title: string; content: string | null }>;
+            sections?: Array<{ id: string; title: string; body: string | null }>;
             gallery_images?: Array<{
                 id: string;
                 image_path: string;
@@ -37,9 +40,43 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-const activeTab = ref<'funeral_programme' | 'obituary' | 'hymns'>('funeral_programme');
 const removedImageIds = ref<string[]>([]);
 const imagePlaceholderSrc = 'https://placehold.net/default.svg';
+
+const localSections = ref<EditableSection[]>(
+    (props.pamphlet.memorial_page?.sections ?? []).map((section) => ({
+        id: section.id,
+        title: section.title,
+        body: section.body ?? '',
+    })),
+);
+const removedSectionIds = ref<string[]>([]);
+
+const addSection = (): void => {
+    localSections.value = [...localSections.value, { id: null, title: '', body: '' }];
+};
+
+const removeSection = (index: number): void => {
+    const section = localSections.value[index];
+
+    if (section?.id) {
+        removedSectionIds.value = [...removedSectionIds.value, section.id];
+    }
+
+    localSections.value = localSections.value.filter((_, sectionIndex) => sectionIndex !== index);
+};
+
+const moveSection = (index: number, direction: -1 | 1): void => {
+    const targetIndex = index + direction;
+
+    if (targetIndex < 0 || targetIndex >= localSections.value.length) {
+        return;
+    }
+
+    const reordered = [...localSections.value];
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+    localSections.value = reordered;
+};
 
 const toggleRemoveImage = (imageId: string): void => {
     if (removedImageIds.value.includes(imageId)) {
@@ -186,84 +223,99 @@ const setImageFallback = (event: Event): void => {
                     </label>
                 </div>
 
-                <div class="space-y-4 rounded-xl border border-border bg-card p-4 md:p-6">
-                    <div class="flex flex-wrap gap-2 border-b border-border pb-3">
-                        <button
-                            type="button"
-                            class="rounded-full px-4 py-2 text-sm transition-colors"
-                            :class="
-                                activeTab === 'funeral_programme'
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                            "
-                            @click="activeTab = 'funeral_programme'"
-                        >
-                            Funeral Programme
-                        </button>
-                        <button
-                            type="button"
-                            class="rounded-full px-4 py-2 text-sm transition-colors"
-                            :class="
-                                activeTab === 'obituary'
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                            "
-                            @click="activeTab = 'obituary'"
-                        >
-                            Obituary
-                        </button>
-                        <button
-                            type="button"
-                            class="rounded-full px-4 py-2 text-sm transition-colors"
-                            :class="
-                                activeTab === 'hymns'
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                            "
-                            @click="activeTab = 'hymns'"
-                        >
-                            Hymns
-                        </button>
+                <section class="space-y-4 rounded-xl border border-border bg-card p-4 md:p-6">
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+                        <div>
+                            <h2 class="font-medium text-base">Memorial sections</h2>
+                            <p class="text-muted-foreground text-sm">
+                                Add sections like an obituary, funeral programme, hymns, or tributes.
+                            </p>
+                        </div>
+                        <Button type="button" variant="outline" @click="addSection">Add section</Button>
                     </div>
 
-                    <div v-show="activeTab === 'funeral_programme'" class="space-y-2">
-                        <Label for="funeral_programme">Funeral programme</Label>
-                        <textarea
-                            id="funeral_programme"
-                            name="funeral_programme"
-                            :value="pamphlet.memorial_page?.funeral_programme ?? ''"
-                            class="w-full rounded-md border border-input px-3 py-2"
-                            rows="7"
-                        />
-                    </div>
-                    <div v-show="activeTab === 'obituary'" class="space-y-2">
-                        <Label for="obituary">Obituary</Label>
-                        <textarea
-                            id="obituary"
-                            name="obituary"
-                            :value="pamphlet.memorial_page?.obituary ?? ''"
-                            class="w-full rounded-md border border-input px-3 py-2"
-                            rows="7"
-                        />
-                    </div>
-                    <div v-show="activeTab === 'hymns'" class="space-y-2">
-                        <Label for="hymns">Hymns</Label>
-                        <textarea
-                            id="hymns"
-                            name="hymns"
-                            :value="pamphlet.memorial_page?.hymns ?? ''"
-                            class="w-full rounded-md border border-input px-3 py-2"
-                            rows="7"
-                        />
-                    </div>
-                </div>
+                    <input
+                        v-for="sectionId in removedSectionIds"
+                        :key="`remove-section-${sectionId}`"
+                        type="hidden"
+                        name="remove_section_ids[]"
+                        :value="sectionId"
+                    />
 
-                <div class="space-y-2">
-                    <Label>Additional section</Label>
-                    <Input name="additional_sections[0][title]" placeholder="Section title" />
-                    <textarea name="additional_sections[0][content]" class="w-full rounded-md border border-input px-3 py-2" rows="4" />
-                    <InputError :message="errors['additional_sections.0.title']" />
-                </div>
+                    <div
+                        v-if="localSections.length === 0"
+                        class="rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground text-sm"
+                    >
+                        No sections yet. Use "Add section" to tell this person's story.
+                    </div>
+
+                    <div
+                        v-for="(section, index) in localSections"
+                        :key="section.id ?? `new-${index}`"
+                        class="space-y-3 rounded-xl border border-border bg-background p-4"
+                    >
+                        <input
+                            v-if="section.id"
+                            type="hidden"
+                            :name="`sections[${index}][id]`"
+                            :value="section.id"
+                        />
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-muted-foreground text-xs uppercase tracking-wide">
+                                Section {{ index + 1 }}
+                            </span>
+                            <div class="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    class="rounded-md border border-border px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                                    :disabled="index === 0"
+                                    aria-label="Move section up"
+                                    @click="moveSection(index, -1)"
+                                >
+                                    ↑
+                                </button>
+                                <button
+                                    type="button"
+                                    class="rounded-md border border-border px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                                    :disabled="index === localSections.length - 1"
+                                    aria-label="Move section down"
+                                    @click="moveSection(index, 1)"
+                                >
+                                    ↓
+                                </button>
+                                <button
+                                    type="button"
+                                    class="rounded-md border border-destructive/40 px-2 py-1 text-destructive text-xs transition-colors hover:bg-destructive/10"
+                                    @click="removeSection(index)"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <Label :for="`section-title-${index}`">Title</Label>
+                            <Input
+                                :id="`section-title-${index}`"
+                                v-model="section.title"
+                                :name="`sections[${index}][title]`"
+                                placeholder="e.g. Obituary, Funeral programme, Hymns"
+                            />
+                            <InputError :message="errors[`sections.${index}.title`]" />
+                        </div>
+                        <div class="space-y-2">
+                            <Label :for="`section-body-${index}`">Content</Label>
+                            <textarea
+                                :id="`section-body-${index}`"
+                                v-model="section.body"
+                                :name="`sections[${index}][body]`"
+                                class="w-full rounded-md border border-input px-3 py-2"
+                                rows="6"
+                                placeholder="Write the content for this section…"
+                            />
+                            <InputError :message="errors[`sections.${index}.body`]" />
+                        </div>
+                    </div>
+                </section>
 
                 <Button type="submit" :disabled="processing">Publish memorial page</Button>
             </Form>

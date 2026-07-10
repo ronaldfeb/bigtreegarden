@@ -215,11 +215,6 @@ it('removes selected memorial gallery images on update', function () {
     ]);
 
     $memorialPage = $pamphlet->memorialPage;
-    $memorialPage->update([
-        'funeral_programme' => 'Programme',
-        'obituary' => 'Obituary',
-        'hymns' => 'Hymns',
-    ]);
 
     $imageToRemovePath = UploadedFile::fake()->image('remove.jpg')->store('memorial/gallery', 'public');
     $imageToKeepPath = UploadedFile::fake()->image('keep.jpg')->store('memorial/gallery', 'public');
@@ -241,9 +236,6 @@ it('removes selected memorial gallery images on update', function () {
         'is_bold' => false,
         'is_italic' => false,
         'date_format' => 'd M Y',
-        'funeral_programme' => 'Programme',
-        'obituary' => 'Obituary',
-        'hymns' => 'Hymns',
         'remove_gallery_image_ids' => [$imageToRemove->id],
     ]);
 
@@ -256,14 +248,77 @@ it('removes selected memorial gallery images on update', function () {
     Storage::disk('public')->assertExists($imageToKeepPath);
 });
 
+it('saves and updates dynamic sections on memorial page update', function () {
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::Paid,
+    ]);
+
+    $memorialPage = $pamphlet->memorialPage;
+
+    $sectionToUpdate = $memorialPage->sections()->create([
+        'title' => 'Obituary',
+        'body' => 'Original obituary text.',
+        'sort_order' => 0,
+    ]);
+
+    $sectionToRemove = $memorialPage->sections()->create([
+        'title' => 'Hymns',
+        'body' => 'Amazing Grace',
+        'sort_order' => 1,
+    ]);
+
+    $response = $this->actingAs($pamphlet->owner())->patch("/pamphlets/{$pamphlet->id}/memorial", [
+        'font_family' => 'Georgia',
+        'is_bold' => false,
+        'is_italic' => false,
+        'date_format' => 'd M Y',
+        'sections' => [
+            [
+                'id' => $sectionToUpdate->id,
+                'title' => 'Obituary (updated)',
+                'body' => 'Updated obituary text.',
+            ],
+            [
+                'title' => 'Tributes',
+                'body' => 'A new tributes section.',
+            ],
+        ],
+        'remove_section_ids' => [$sectionToRemove->id],
+    ]);
+
+    $response->assertRedirect(route('memorial.public.show', $pamphlet->public_slug));
+
+    $sections = $memorialPage->sections()->orderBy('sort_order')->get();
+
+    expect($sections)->toHaveCount(2);
+    expect($sections[0]->id)->toBe($sectionToUpdate->id);
+    expect($sections[0]->title)->toBe('Obituary (updated)');
+    expect($sections[0]->body)->toBe('Updated obituary text.');
+    expect($sections[0]->sort_order)->toBe(0);
+    expect($sections[1]->title)->toBe('Tributes');
+    expect($sections[1]->body)->toBe('A new tributes section.');
+    expect($sections[1]->sort_order)->toBe(1);
+    expect($memorialPage->sections()->whereKey($sectionToRemove->id)->exists())->toBeFalse();
+});
+
 it('allows an owner to open the print view', function () {
+    Storage::fake('public');
+
+    $imagePath = 'pamphlets/images/memorial.jpg';
+    Storage::disk('public')->put($imagePath, 'fake-image');
+
     $pamphlet = MemorialPagePamphlet::factory()->create([
         'status' => PamphletStatus::Published,
+        'uploaded_image_path' => $imagePath,
     ]);
 
     $response = $this->actingAs($pamphlet->owner())->get(route('pamphlets.print', $pamphlet));
 
     $response->assertSuccessful();
+    $response->assertInertia(fn ($page) => $page
+        ->component('pamphlets/Print')
+        ->where('pamphlet.uploaded_image_url', Storage::disk('public')->url($imagePath))
+    );
 });
 
 it('prevents non-owners from opening the print view', function () {

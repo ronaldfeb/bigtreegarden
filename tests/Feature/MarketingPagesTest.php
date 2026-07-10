@@ -227,6 +227,19 @@ it('includes featured published testimonials on the landing page', function () {
         );
 });
 
+it('renders active partners on the partners page', function () {
+    Partner::factory()->create(['name' => 'Visible Partner', 'sort_order' => 0]);
+    Partner::factory()->inactive()->create(['name' => 'Hidden Partner']);
+
+    $this->get(route('partners.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('marketing/Partners/Index')
+            ->has('partners', 1)
+            ->where('partners.0.name', 'Visible Partner'),
+        );
+});
+
 it('includes active partners on the landing page', function () {
     Partner::factory()->create(['name' => 'Active Partner']);
     Partner::factory()->inactive()->create(['name' => 'Inactive Partner']);

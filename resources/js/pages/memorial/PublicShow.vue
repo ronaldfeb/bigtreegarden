@@ -10,9 +10,11 @@ const props = defineProps<{
         date_of_passing: string;
         date_format: string;
         memorial_page?: {
-            funeral_programme?: string | null;
-            obituary?: string | null;
-            hymns?: string | null;
+            sections?: Array<{
+                id: string;
+                title: string;
+                body: string | null;
+            }>;
             gallery_images?: Array<{
                 id: string;
                 image_path: string;
@@ -41,7 +43,11 @@ const props = defineProps<{
 }>();
 
 const normalizedDateFormat = computed(() => props.pamphlet.date_format || 'd M Y');
-const activeTab = ref<'funeral_programme' | 'obituary' | 'hymns'>('funeral_programme');
+const memorialSections = computed(() =>
+    (props.pamphlet.memorial_page?.sections ?? []).filter(
+        (section) => (section.body ?? '').trim() !== '',
+    ),
+);
 const isGalleryOpen = ref(false);
 const activeImageIndex = ref(0);
 const galleryImages = computed(() => props.pamphlet.memorial_page?.gallery_images ?? []);
@@ -301,40 +307,31 @@ const formatFlowerDate = (value: string | null): string => {
                 </div>
             </section>
 
-            <section class="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-warm-sm md:p-8">
-                <div class="flex flex-wrap gap-2 border-b border-border pb-3">
-                    <button type="button" class="rounded-full px-4 py-2 text-sm transition-colors"
-                        :class="activeTab === 'funeral_programme' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'"
-                        @click="activeTab = 'funeral_programme'">
-                        Funeral Programme
-                    </button>
-                    <button type="button" class="rounded-full px-4 py-2 text-sm transition-colors"
-                        :class="activeTab === 'obituary' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'"
-                        @click="activeTab = 'obituary'">
-                        Obituary
-                    </button>
-                    <button type="button" class="rounded-full px-4 py-2 text-sm transition-colors"
-                        :class="activeTab === 'hymns' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'"
-                        @click="activeTab = 'hymns'">
-                        Hymns
-                    </button>
-                </div>
-
-                <div
-                    v-if="activeTab === 'funeral_programme'"
-                    class="prose-memorial whitespace-pre-wrap text-foreground"
+            <section
+                v-if="memorialSections.length > 0"
+                class="space-y-3 rounded-2xl border border-border bg-card p-6 shadow-warm-sm md:p-8"
+            >
+                <details
+                    v-for="(section, index) in memorialSections"
+                    :key="section.id"
+                    :open="index === 0"
+                    class="group rounded-xl border border-border bg-background transition-colors open:border-brand/40"
                 >
-                    {{ pamphlet.memorial_page?.funeral_programme || 'No funeral programme provided yet.' }}
-                </div>
-                <div
-                    v-else-if="activeTab === 'obituary'"
-                    class="prose-memorial whitespace-pre-wrap text-foreground"
-                >
-                    {{ pamphlet.memorial_page?.obituary || 'No obituary provided yet.' }}
-                </div>
-                <div v-else class="prose-memorial whitespace-pre-wrap text-foreground">
-                    {{ pamphlet.memorial_page?.hymns || 'No hymns provided yet.' }}
-                </div>
+                    <summary
+                        class="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-3 text-foreground transition-colors hover:bg-muted/50 [&::-webkit-details-marker]:hidden"
+                    >
+                        <span class="text-heading text-lg">{{ section.title }}</span>
+                        <span
+                            class="shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180"
+                            aria-hidden="true"
+                        >
+                            ⌄
+                        </span>
+                    </summary>
+                    <div class="prose-memorial whitespace-pre-wrap border-t border-border/60 px-4 py-4 text-foreground">
+                        {{ section.body }}
+                    </div>
+                </details>
             </section>
 
             <section class="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-warm-sm md:p-8">

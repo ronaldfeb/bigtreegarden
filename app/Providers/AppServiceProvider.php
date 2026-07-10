@@ -6,6 +6,7 @@ use App\Enums\StaffRole;
 use App\Models\StaffUser;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -27,8 +28,20 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->configureFilesystemDisks();
         $this->configureDefaults();
         $this->configureStaffGates();
+    }
+
+    protected function configureFilesystemDisks(): void
+    {
+        $cloudPublicDisk = config('filesystems.disks.btg_public');
+
+        if (! is_array($cloudPublicDisk) || ($cloudPublicDisk['driver'] ?? null) !== 's3') {
+            return;
+        }
+
+        Config::set('filesystems.disks.public', $cloudPublicDisk);
     }
 
     protected function configureStaffGates(): void
