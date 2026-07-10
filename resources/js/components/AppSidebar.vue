@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, CreditCard, FolderGit2, LayoutGrid, Vault } from 'lucide-vue-next';
+import { BookOpen, CreditCard, HelpCircle, LayoutGrid, Shield, Vault } from 'lucide-vue-next';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -15,6 +15,8 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import help from '@/routes/help';
+import policies from '@/routes/policies';
 import { show as subscriptionShow } from '@/routes/subscriptions';
 import { index as vaultIndex } from '@/routes/vault';
 import type { NavItem } from '@/types';
@@ -39,14 +41,19 @@ const mainNavItems: NavItem[] = [
 
 const footerNavItems: NavItem[] = [
     {
+        title: 'Help Center',
+        href: help.index(),
+        icon: HelpCircle,
+    },
+    {
         title: 'Terms of Service',
-        href: 'https://bigtreegarden.co.za/terms-of-service',
-        icon: FolderGit2,
+        href: policies.terms(),
+        icon: BookOpen,
     },
     {
         title: 'Privacy Policy',
-        href: 'https://bigtreegarden.co.za/privacy-policy',
-        icon: BookOpen,
+        href: policies.privacy(),
+        icon: Shield,
     },
 ];
 </script>
