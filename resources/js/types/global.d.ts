@@ -36,7 +36,13 @@ declare module 'vue' {
 
 declare global {
     interface Window {
-        Tawk_API?: Record<string, unknown>;
+        Tawk_API?: {
+            hideWidget?: () => void;
+            showWidget?: () => void;
+            onLoad?: () => void;
+            __btgVisibilityHooked?: boolean;
+            [key: string]: unknown;
+        };
         Tawk_LoadStart?: Date;
     }
 }

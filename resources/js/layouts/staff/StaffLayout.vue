@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import AppContent from '@/components/AppContent.vue';
 import AppShell from '@/components/AppShell.vue';
 import AppSidebarHeader from '@/components/AppSidebarHeader.vue';
 import StaffSidebar from '@/components/staff/StaffSidebar.vue';
+import { hideTawkToWidget } from '@/lib/tawk';
 import type { BreadcrumbItem } from '@/types';
 import type { StaffUser } from '@/types/staff';
 
@@ -18,6 +19,10 @@ withDefaults(defineProps<Props>(), {
 
 const page = usePage<{ staffUser?: StaffUser }>();
 const staffUser = computed(() => page.props.staffUser);
+
+onMounted(() => {
+    hideTawkToWidget();
+});
 </script>
 
 <template>
