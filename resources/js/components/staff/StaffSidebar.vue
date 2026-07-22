@@ -2,6 +2,9 @@
 import { Link } from '@inertiajs/vue3';
 import {
     BookOpen,
+    Building2,
+    CalendarClock,
+    Contact,
     CreditCard,
     FileText,
     Handshake,
@@ -15,12 +18,14 @@ import {
     Repeat,
     Shield,
     Store,
+    TrendingUp,
     UserCircle,
     Users,
     Vault,
 } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
+import NavUser from '@/components/NavUser.vue';
 import {
     Sidebar,
     SidebarContent,
@@ -48,6 +53,10 @@ import { index as pamphletBackgroundsIndex } from '@/routes/staff/content/pamphl
 import { index as partnersIndex } from '@/routes/staff/content/partners';
 import { index as policiesIndex } from '@/routes/staff/content/policies';
 import { index as testimonialsIndex } from '@/routes/staff/content/testimonials';
+import { dashboard as crmDashboard } from '@/routes/staff/crm';
+import { index as crmContactsIndex } from '@/routes/staff/crm/contacts';
+import { index as crmFollowUpsIndex } from '@/routes/staff/crm/follow-ups';
+import { index as crmOrganisationsIndex } from '@/routes/staff/crm/organisations';
 import { index as memorialPageMessagesIndex } from '@/routes/staff/directory/memorial-page-messages';
 import { index as personsIndex } from '@/routes/staff/directory/persons-of-interest';
 import { index as serviceProvidersIndex } from '@/routes/staff/directory/service-providers';
@@ -91,6 +100,16 @@ const sections = computed((): NavSection[] => {
             items: [
                 { title: 'Adverts', href: advertsIndex(), icon: Megaphone },
                 { title: 'Leads', href: leadsIndex(), icon: Users },
+            ],
+        },
+        {
+            title: 'CRM',
+            roles: ['admin', 'marketing'],
+            items: [
+                { title: 'CRM dashboard', href: crmDashboard(), icon: TrendingUp },
+                { title: 'Organisations', href: crmOrganisationsIndex(), icon: Building2 },
+                { title: 'Contacts', href: crmContactsIndex(), icon: Contact },
+                { title: 'Follow-ups', href: crmFollowUpsIndex(), icon: CalendarClock },
             ],
         },
         {
@@ -209,13 +228,7 @@ const sections = computed((): NavSection[] => {
         </SidebarContent>
 
         <SidebarFooter class="border-sidebar-border border-t">
-            <div class="px-2 py-2 text-sidebar-foreground text-xs">
-                <p class="truncate font-medium">{{ staffUser.user.name }}</p>
-                <p class="truncate capitalize text-muted-foreground">
-                    {{ staffUser.role }}
-                    <span v-if="staffUser.job_title"> · {{ staffUser.job_title }}</span>
-                </p>
-            </div>
+            <NavUser />
         </SidebarFooter>
     </Sidebar>
 </template>

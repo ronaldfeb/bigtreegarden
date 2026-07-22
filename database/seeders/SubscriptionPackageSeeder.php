@@ -14,7 +14,7 @@ class SubscriptionPackageSeeder extends Seeder
                 'name' => 'Memorial Page',
                 'slug' => 'memorial-page',
                 'description' => 'A once-off memorial page with QR-coded pamphlet.',
-                'price_cents' => (int) config('memorial.fixed_price_cents', 69900),
+                'price_cents' => 69900,
                 'billing_interval' => 'once_off',
                 'is_featured' => false,
                 'sort_order' => 1,

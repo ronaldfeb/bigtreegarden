@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             BackgroundCatalogSeeder::class,
             AmbassadorSeeder::class,
             DemoPersonasSeeder::class,
+            CrmDemoSeeder::class,
         ]);
     }
 }

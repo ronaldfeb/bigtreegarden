@@ -63,6 +63,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-marketing', fn (User $user): bool => $activeStaff($user->staffUser)
             && in_array($user->staffUser->role, [StaffRole::Admin, StaffRole::Marketing], true));
 
+        Gate::define('manage-crm', fn (User $user): bool => $activeStaff($user->staffUser)
+            && in_array($user->staffUser->role, [StaffRole::Admin, StaffRole::Marketing], true));
+
         Gate::define('manage-content', fn (User $user): bool => $activeStaff($user->staffUser)
             && in_array($user->staffUser->role, [StaffRole::Admin, StaffRole::Content], true));
 

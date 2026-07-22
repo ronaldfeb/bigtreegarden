@@ -14,6 +14,12 @@ use App\Http\Controllers\Staff\Content\MemorialPagePamphletBackgroundController;
 use App\Http\Controllers\Staff\Content\PartnerController;
 use App\Http\Controllers\Staff\Content\PolicyController;
 use App\Http\Controllers\Staff\Content\TestimonialController;
+use App\Http\Controllers\Staff\Crm\CrmContactController;
+use App\Http\Controllers\Staff\Crm\CrmDashboardController;
+use App\Http\Controllers\Staff\Crm\CrmFollowUpController;
+use App\Http\Controllers\Staff\Crm\CrmInteractionController;
+use App\Http\Controllers\Staff\Crm\CrmOrganisationController;
+use App\Http\Controllers\Staff\Crm\LeadConversionController;
 use App\Http\Controllers\Staff\DashboardController;
 use App\Http\Controllers\Staff\Directory\MemorialPageMessageController;
 use App\Http\Controllers\Staff\Directory\PersonOfInterestController;
@@ -33,6 +39,19 @@ Route::post('marketing/leads/{marketing_lead}/notes', [MarketingLeadNoteControll
     ->name('marketing.leads.notes.store');
 Route::delete('marketing/leads/{marketing_lead}/notes/{marketing_lead_note}', [MarketingLeadNoteController::class, 'destroy'])
     ->name('marketing.leads.notes.destroy');
+Route::post('marketing/leads/{lead}/convert', [LeadConversionController::class, 'store'])
+    ->name('marketing.leads.convert');
+
+Route::get('crm', [CrmDashboardController::class, 'index'])->name('crm.dashboard');
+Route::get('crm/follow-ups', [CrmFollowUpController::class, 'index'])->name('crm.follow-ups.index');
+Route::post('crm/follow-ups', [CrmFollowUpController::class, 'store'])->name('crm.follow-ups.store');
+Route::patch('crm/follow-ups/{followUp}', [CrmFollowUpController::class, 'update'])->name('crm.follow-ups.update');
+Route::post('crm/follow-ups/{followUp}/complete', [CrmFollowUpController::class, 'complete'])->name('crm.follow-ups.complete');
+Route::post('crm/follow-ups/{followUp}/cancel', [CrmFollowUpController::class, 'cancel'])->name('crm.follow-ups.cancel');
+Route::post('crm/interactions', [CrmInteractionController::class, 'store'])->name('crm.interactions.store');
+Route::delete('crm/interactions/{interaction}', [CrmInteractionController::class, 'destroy'])->name('crm.interactions.destroy');
+Route::resource('crm/organisations', CrmOrganisationController::class)->names('crm.organisations');
+Route::resource('crm/contacts', CrmContactController::class)->names('crm.contacts');
 
 Route::resource('content/blogs', BlogController::class)->names('content.blogs');
 Route::resource('content/blog-categories', BlogCategoryController::class)->names('content.blog-categories');

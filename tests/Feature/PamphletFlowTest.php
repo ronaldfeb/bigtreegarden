@@ -5,6 +5,7 @@ use App\Enums\TransactionStatus;
 use App\Models\MemorialPagePamphlet;
 use App\Models\MemorialPagePamphletBackground;
 use App\Models\MemorialPagePamphletBackgroundCollection;
+use App\Models\SubscriptionPackage;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\GuestPamphletDraftService;
@@ -129,6 +130,14 @@ it('prevents guests without token from viewing another draft', function () {
 });
 
 it('creates an initiated transaction record on checkout', function () {
+    SubscriptionPackage::factory()->create([
+        'slug' => 'memorial-page',
+        'billing_interval' => 'once_off',
+        'price_cents' => 69900,
+        'currency' => 'ZAR',
+        'is_active' => true,
+    ]);
+
     $pamphlet = MemorialPagePamphlet::factory()->create([
         'status' => PamphletStatus::PendingPayment,
     ]);
@@ -140,6 +149,7 @@ it('creates an initiated transaction record on checkout', function () {
     $transaction = Transaction::query()->first();
     expect($transaction)->not->toBeNull();
     expect($transaction->status)->toBe(TransactionStatus::Initiated);
+    expect($transaction->amount_cents)->toBe(69900);
 });
 
 it('marks transaction and pamphlet as paid after a valid ITN notification', function () {
@@ -162,7 +172,7 @@ it('marks transaction and pamphlet as paid after a valid ITN notification', func
         'payable_id' => $pamphlet->id,
         'user_id' => $pamphlet->owner()?->id,
         'status' => TransactionStatus::Initiated,
-        'amount_cents' => config('memorial.fixed_price_cents'),
+        'amount_cents' => 69900,
     ]);
 
     $payload = [

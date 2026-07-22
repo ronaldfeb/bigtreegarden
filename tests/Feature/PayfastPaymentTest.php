@@ -3,6 +3,7 @@
 use App\Enums\PamphletStatus;
 use App\Enums\TransactionStatus;
 use App\Models\MemorialPagePamphlet;
+use App\Models\SubscriptionPackage;
 use App\Models\Transaction;
 use App\Services\PayfastService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,6 +16,14 @@ beforeEach(function () {
     config()->set('services.payfast.merchant_key', '46f0cd694581a');
     config()->set('services.payfast.passphrase', 'test-passphrase');
     config()->set('services.payfast.url', 'https://sandbox.payfast.co.za/eng/process');
+
+    SubscriptionPackage::factory()->create([
+        'slug' => 'memorial-page',
+        'billing_interval' => 'once_off',
+        'price_cents' => 69900,
+        'currency' => 'ZAR',
+        'is_active' => true,
+    ]);
 });
 
 /**
@@ -65,7 +74,7 @@ it('includes a valid signature in the checkout payload', function () {
         'payable_id' => $pamphlet->id,
         'user_id' => $pamphlet->owner()?->id,
         'status' => TransactionStatus::Initiated,
-        'amount_cents' => config('memorial.fixed_price_cents'),
+        'amount_cents' => 69900,
     ]);
 
     $payfastService = app(PayfastService::class);
@@ -97,6 +106,49 @@ it('reuses an initiated transaction on repeated checkout visits', function () {
     expect(Transaction::query()->count())->toBe(1);
 });
 
+it('prices pamphlet checkout from the memorial-page subscription package', function () {
+    SubscriptionPackage::query()->where('slug', 'memorial-page')->update([
+        'price_cents' => 45500,
+        'currency' => 'ZAR',
+    ]);
+
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
+    ]);
+
+    $this->actingAs($pamphlet->owner())->get(route('payments.checkout', $pamphlet))->assertSuccessful();
+
+    $transaction = Transaction::query()->first();
+
+    expect($transaction)->not->toBeNull();
+    expect($transaction->amount_cents)->toBe(45500);
+    expect($transaction->currency)->toBe('ZAR');
+});
+
+it('updates an initiated transaction when package pricing changes', function () {
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
+    ]);
+
+    Transaction::factory()->create([
+        'payable_type' => MemorialPagePamphlet::class,
+        'payable_id' => $pamphlet->id,
+        'user_id' => $pamphlet->owner()?->id,
+        'status' => TransactionStatus::Initiated,
+        'amount_cents' => 10000,
+        'currency' => 'ZAR',
+    ]);
+
+    SubscriptionPackage::query()->where('slug', 'memorial-page')->update([
+        'price_cents' => 77700,
+    ]);
+
+    $this->actingAs($pamphlet->owner())->get(route('payments.checkout', $pamphlet))->assertSuccessful();
+
+    expect(Transaction::query()->count())->toBe(1);
+    expect(Transaction::query()->first()?->amount_cents)->toBe(77700);
+});
+
 it('fulfills transaction and pamphlet when a valid ITN is received', function () {
     Http::fake([
         'sandbox.payfast.co.za/eng/query/validate' => Http::response('VALID'),
@@ -112,7 +164,7 @@ it('fulfills transaction and pamphlet when a valid ITN is received', function ()
         'payable_id' => $pamphlet->id,
         'user_id' => $pamphlet->owner()?->id,
         'status' => TransactionStatus::Initiated,
-        'amount_cents' => config('memorial.fixed_price_cents'),
+        'amount_cents' => 69900,
     ]);
 
     $payload = signItnPayload(baseItnPayload($transaction));
@@ -144,7 +196,7 @@ it('does not fulfill when the ITN signature is invalid', function () {
         'payable_id' => $pamphlet->id,
         'user_id' => $pamphlet->owner()?->id,
         'status' => TransactionStatus::Initiated,
-        'amount_cents' => config('memorial.fixed_price_cents'),
+        'amount_cents' => 69900,
     ]);
 
     $payload = baseItnPayload($transaction);
@@ -176,7 +228,7 @@ it('does not fulfill when the ITN amount does not match', function () {
         'payable_id' => $pamphlet->id,
         'user_id' => $pamphlet->owner()?->id,
         'status' => TransactionStatus::Initiated,
-        'amount_cents' => config('memorial.fixed_price_cents'),
+        'amount_cents' => 69900,
     ]);
 
     $payload = signItnPayload(baseItnPayload($transaction, [

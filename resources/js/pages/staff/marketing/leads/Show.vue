@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import StaffLayout from '@/layouts/staff/StaffLayout.vue';
-import { index, edit, destroy, show } from '@/routes/staff/marketing/leads';
+import { index, edit, destroy, show, convert } from '@/routes/staff/marketing/leads';
 import { store as storeNote, destroy as destroyNote } from '@/routes/staff/marketing/leads/notes';
 
 const props = defineProps<{
@@ -74,6 +74,9 @@ const props = defineProps<{
             <Button variant="outline" as-child>
                 <Link :href="index()">Back to list</Link>
             </Button>
+            <Form v-bind="convert.form(props.lead.id)">
+                <Button type="submit" class="bg-brand hover:bg-brand-strong">Convert to CRM contact</Button>
+            </Form>
             <Form v-if="!undefined" v-bind="destroy.form(props.lead.id)">
                 <Button type="submit" variant="destructive">Delete</Button>
             </Form>

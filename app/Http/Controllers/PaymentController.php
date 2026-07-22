@@ -6,6 +6,7 @@ use App\Enums\PamphletStatus;
 use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
 use App\Models\MemorialPagePamphlet;
+use App\Models\SubscriptionPackage;
 use App\Models\Transaction;
 use App\Services\GuestPamphletDraftService;
 use App\Services\PamphletPaymentFulfillmentService;
@@ -51,6 +52,10 @@ class PaymentController extends Controller
             return redirect()->route('memorial.edit', $pamphlet);
         }
 
+        $package = SubscriptionPackage::memorialPagePackage();
+
+        abort_if($package === null, 503, 'Memorial page pricing is not configured.');
+
         $transaction = $pamphlet->transactions()
             ->where('status', TransactionStatus::Initiated)
             ->latest()
@@ -62,9 +67,14 @@ class PaymentController extends Controller
                 'type' => TransactionType::PamphletPurchase,
                 'provider' => 'payfast',
                 'merchant_reference' => (string) Str::ulid(),
-                'amount_cents' => config('memorial.fixed_price_cents'),
-                'currency' => 'ZAR',
+                'amount_cents' => $package->price_cents,
+                'currency' => $package->currency,
                 'status' => TransactionStatus::Initiated,
+            ]);
+        } elseif ($transaction->amount_cents !== $package->price_cents || $transaction->currency !== $package->currency) {
+            $transaction->update([
+                'amount_cents' => $package->price_cents,
+                'currency' => $package->currency,
             ]);
         }
 

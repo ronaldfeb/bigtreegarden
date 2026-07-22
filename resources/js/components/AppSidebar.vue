@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-import { BookOpen, CreditCard, HelpCircle, LayoutGrid, Shield, Vault } from 'lucide-vue-next';
+import { Link, usePage } from '@inertiajs/vue3';
+import { BookOpen, CreditCard, HelpCircle, LayoutGrid, Shield, ShieldCheck, Vault } from 'lucide-vue-next';
+import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -17,27 +18,46 @@ import {
 import { dashboard } from '@/routes';
 import help from '@/routes/help';
 import policies from '@/routes/policies';
+import { dashboard as staffDashboard } from '@/routes/staff';
 import { show as subscriptionShow } from '@/routes/subscriptions';
 import { index as vaultIndex } from '@/routes/vault';
 import type { NavItem } from '@/types';
+import type { StaffUser } from '@/types/staff';
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Vault',
-        href: vaultIndex(),
-        icon: Vault,
-    },
-    {
-        title: 'Subscription',
-        href: subscriptionShow(),
-        icon: CreditCard,
-    },
-];
+const page = usePage<{ staffUser?: StaffUser | null }>();
+const isStaffUser = computed(
+    () => page.props.staffUser?.is_active === true,
+);
+
+const mainNavItems = computed((): NavItem[] => {
+    const items: NavItem[] = [
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+            icon: LayoutGrid,
+        },
+        {
+            title: 'Vault',
+            href: vaultIndex(),
+            icon: Vault,
+        },
+        {
+            title: 'Subscription',
+            href: subscriptionShow(),
+            icon: CreditCard,
+        },
+    ];
+
+    if (isStaffUser.value) {
+        items.push({
+            title: 'Staff Portal',
+            href: staffDashboard(),
+            icon: ShieldCheck,
+        });
+    }
+
+    return items;
+});
 
 const footerNavItems: NavItem[] = [
     {

@@ -51,4 +51,21 @@ class SubscriptionPackage extends Model
     {
         return $query->where('is_active', true);
     }
+
+    /**
+     * The once-off package that prices memorial pamphlet purchases.
+     */
+    public static function memorialPagePackage(): ?self
+    {
+        return static::query()
+            ->active()
+            ->where('billing_interval', 'once_off')
+            ->where('slug', 'memorial-page')
+            ->first()
+            ?? static::query()
+                ->active()
+                ->where('billing_interval', 'once_off')
+                ->orderBy('sort_order')
+                ->first();
+    }
 }

@@ -1,5 +1,8 @@
 <?php
 
+use App\Enums\StaffRole;
+use App\Models\StaffUser;
+use App\Models\User;
 use Tests\TestCase;
 
 /*
@@ -46,4 +49,17 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+function makeStaffUser(StaffRole $role = StaffRole::Admin): User
+{
+    $user = User::factory()->create();
+
+    StaffUser::factory()->create([
+        'user_id' => $user->id,
+        'role' => $role,
+        'is_active' => true,
+    ]);
+
+    return $user->fresh(['staffUser']);
 }
