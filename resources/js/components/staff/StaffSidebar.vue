@@ -12,6 +12,7 @@ import {
     Image,
     LayoutGrid,
     Megaphone,
+    MessageCircle,
     MessageSquare,
     Package,
     Quote,
@@ -67,10 +68,14 @@ import { index as leadsIndex } from '@/routes/staff/marketing/leads';
 import type { NavItem } from '@/types';
 import type { StaffRole, StaffUser } from '@/types/staff';
 
+type StaffNavItem = NavItem & {
+    external?: boolean;
+};
+
 type NavSection = {
     title: string;
     roles: StaffRole[];
-    items: NavItem[];
+    items: StaffNavItem[];
 };
 
 const props = defineProps<{
@@ -78,6 +83,8 @@ const props = defineProps<{
 }>();
 
 const { isCurrentUrl, isCurrentOrParentUrl } = useCurrentUrl();
+
+const TAWK_DASHBOARD_URL = 'https://dashboard.tawk.to/#/dashboard';
 
 const sections = computed((): NavSection[] => {
     const role = props.staffUser.role;
@@ -91,6 +98,12 @@ const sections = computed((): NavSection[] => {
                     title: 'Dashboard',
                     href: dashboard(),
                     icon: LayoutGrid,
+                },
+                {
+                    title: 'Live chat',
+                    href: TAWK_DASHBOARD_URL,
+                    icon: MessageCircle,
+                    external: true,
                 },
             ],
         },
@@ -181,7 +194,7 @@ const sections = computed((): NavSection[] => {
             ...section,
             items: section.items.map((item) => ({
                 ...item,
-                isActive: isCurrentOrParentUrl(item.href),
+                isActive: item.external ? false : isCurrentOrParentUrl(item.href),
             })),
         }));
 });
@@ -217,7 +230,16 @@ const sections = computed((): NavSection[] => {
                             :is-active="item.isActive ?? isCurrentUrl(item.href)"
                             :tooltip="item.title"
                         >
-                            <Link :href="item.href">
+                            <a
+                                v-if="item.external"
+                                :href="typeof item.href === 'string' ? item.href : item.href.url"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <component :is="item.icon" />
+                                <span>{{ item.title }}</span>
+                            </a>
+                            <Link v-else :href="item.href">
                                 <component :is="item.icon" />
                                 <span>{{ item.title }}</span>
                             </Link>

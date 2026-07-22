@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TawkToWidget from '@/components/TawkToWidget.vue';
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 
@@ -15,4 +16,5 @@ withDefaults(defineProps<Props>(), {
     <AppLayout :breadcrumbs="breadcrumbs">
         <slot />
     </AppLayout>
+    <TawkToWidget />
 </template>

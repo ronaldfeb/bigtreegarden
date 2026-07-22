@@ -33,3 +33,13 @@ declare module 'vue' {
         $headManager: ReturnType<typeof createHeadManager>;
     }
 }
+
+declare global {
+    interface Window {
+        Tawk_API?: Record<string, unknown>;
+        Tawk_LoadStart?: Date;
+    }
+}
+
+export {};
+

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import MarketingFooter from '@/components/marketing/MarketingFooter.vue';
 import MarketingNavbar from '@/components/marketing/MarketingNavbar.vue';
+import TawkToWidget from '@/components/TawkToWidget.vue';
 
 withDefaults(
     defineProps<{
@@ -19,5 +20,6 @@ withDefaults(
             <slot />
         </main>
         <MarketingFooter />
+        <TawkToWidget />
     </div>
 </template>
