@@ -209,33 +209,12 @@ class PamphletController extends Controller
         $pamphlet->load([
             'background',
             'style',
+            'transactions',
             'memorialPage.personOfInterest',
         ]);
 
         return Inertia::render('pamphlets/Print', [
-            'pamphlet' => [
-                'id' => $pamphlet->id,
-                'heading' => $pamphlet->heading,
-                'person_full_name' => $pamphlet->person_full_name,
-                'date_of_birth' => optional($pamphlet->date_of_birth)->toDateString(),
-                'date_of_passing' => optional($pamphlet->date_of_passing)->toDateString(),
-                'date_format' => $pamphlet->date_format,
-                'short_text' => $pamphlet->short_text,
-                'uploaded_image_path' => $pamphlet->uploaded_image_path,
-                'uploaded_image_url' => MediaStorage::url($pamphlet->uploaded_image_path),
-                'image_shape' => $pamphlet->image_shape,
-                'image_crop_mode' => $pamphlet->image_crop_mode,
-                'background_asset_path' => $pamphlet->background?->asset_path,
-                'font_family' => $pamphlet->style?->font_family ?? 'Georgia',
-                'is_bold' => (bool) ($pamphlet->style?->is_bold ?? false),
-                'is_italic' => (bool) ($pamphlet->style?->is_italic ?? false),
-                'heading_color' => $pamphlet->style?->heading_color ?? '#000000',
-                'name_color' => $pamphlet->style?->name_color ?? '#000000',
-                'short_text_color' => $pamphlet->style?->short_text_color ?? '#000000',
-                'dates_color' => $pamphlet->style?->dates_color ?? '#000000',
-                'qr_code_image_path' => $personOfInterest?->qr_code_path,
-                'qr_code_target_url' => $targetUrl,
-            ],
+            'pamphlet' => $this->pamphletPayload($pamphlet),
         ]);
     }
 

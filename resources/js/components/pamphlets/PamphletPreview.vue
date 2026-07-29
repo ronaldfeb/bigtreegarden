@@ -24,9 +24,11 @@ const props = withDefaults(
     defineProps<{
         pamphlet: PamphletPreviewData;
         compact?: boolean;
+        printable?: boolean;
     }>(),
     {
         compact: false,
+        printable: false,
     },
 );
 
@@ -82,7 +84,10 @@ const fontFamily = computed(() => props.pamphlet.font_family || 'Georgia');
 <template>
     <div
         class="relative mx-auto w-full min-w-0 overflow-hidden rounded-2xl border border-border bg-muted shadow-md"
-        :class="compact ? 'max-w-md' : 'max-w-xl'"
+        :class="[
+            compact ? 'max-w-md' : 'max-w-xl',
+            printable ? 'print:max-w-none print:rounded-none print:border-none print:shadow-none' : '',
+        ]"
     >
         <img
             v-if="pamphlet.background_asset_path"

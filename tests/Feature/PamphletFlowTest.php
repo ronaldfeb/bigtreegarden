@@ -397,6 +397,8 @@ it('allows an owner to open the print view', function () {
         ->where('pamphlet.name_color', '#AABBCC')
         ->where('pamphlet.short_text_color', '#445566')
         ->where('pamphlet.dates_color', '#778899')
+        ->where('pamphlet.pamphlet_qr_code.image_path', $pamphlet->fresh()->memorialPage?->personOfInterest?->qr_code_path)
+        ->has('pamphlet.pamphlet_qr_code.target_url')
     );
 });
 
