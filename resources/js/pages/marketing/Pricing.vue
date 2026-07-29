@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Check, X } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
@@ -16,25 +16,27 @@ import { register } from '@/routes';
 import { create } from '@/routes/pamphlets';
 import { store } from '@/routes/subscriptions';
 
+type PricingPackage = {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    price_cents: number;
+    currency: string;
+    billing_interval: string;
+    is_featured: boolean;
+    features: Array<{
+        id: string;
+        label: string;
+        description: string | null;
+        is_included: boolean;
+    }>;
+};
+
 withDefaults(
     defineProps<{
         canRegister?: boolean;
-        packages?: Array<{
-            id: string;
-            name: string;
-            slug: string;
-            description: string | null;
-            price_cents: number;
-            currency: string;
-            billing_interval: string;
-            is_featured: boolean;
-            features: Array<{
-                id: string;
-                label: string;
-                description: string | null;
-                is_included: boolean;
-            }>;
-        }>;
+        packages?: PricingPackage[];
     }>(),
     {
         canRegister: true,
@@ -51,7 +53,17 @@ const billingLabels: Record<string, string> = {
 const page = usePage();
 const isAuthenticated = computed(() => Boolean((page.props.auth as { user: unknown } | undefined)?.user));
 
-function choosePlan(pkg: { id: string; billing_interval: string }): void {
+function isMemorialPlan(pkg: Pick<PricingPackage, 'billing_interval'>): boolean {
+    return pkg.billing_interval === 'once_off';
+}
+
+function choosePlan(pkg: Pick<PricingPackage, 'id' | 'billing_interval'>): void {
+    if (isMemorialPlan(pkg)) {
+        router.get(create().url);
+
+        return;
+    }
+
     if (!isAuthenticated.value) {
         router.get(register({ query: { intent: 'vault' } }).url);
 
@@ -131,12 +143,12 @@ function formatPrice(cents: number, currency: string): string {
 
                     <CardFooter>
                         <Button
-                            v-if="pkg.billing_interval === 'once_off'"
+                            v-if="isMemorialPlan(pkg)"
                             as-child
                             class="w-full"
                             :variant="pkg.is_featured ? 'default' : 'outline'"
                         >
-                            <a :href="create()">Get started</a>
+                            <Link :href="create()">Get started</Link>
                         </Button>
                         <Button
                             v-else

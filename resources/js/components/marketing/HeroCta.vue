@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
-import { create } from '@/routes/pamphlets';
+import { register } from '@/routes';
 </script>
 
 <template>
@@ -20,7 +20,7 @@ import { create } from '@/routes/pamphlets';
 
         <div class="mt-6 flex justify-end">
             <Button as-child size="lg">
-                <Link :href="create()">Create memorial</Link>
+                <Link :href="register()">Create memorial</Link>
             </Button>
         </div>
     </div>

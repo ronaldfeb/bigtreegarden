@@ -48,7 +48,7 @@ const columns = [
             <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                     <Link :href="home()">
-                        <img src="/assets/logo/logo_rect.webp" :alt="appName" class="h-9 w-auto object-contain"
+                        <img src="/assets/logo/btg_logo_black.svg" :alt="appName" class="h-9 w-auto object-contain"
                             width="180" height="45" />
                     </Link>
                     <p class="mt-4 max-w-xs text-sm text-muted-foreground">

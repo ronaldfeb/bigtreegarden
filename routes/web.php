@@ -54,6 +54,8 @@ Route::post('/vault/access', [VaultAccessController::class, 'store'])->name('vau
 Route::get('/vault/access/view', [VaultAccessController::class, 'show'])->name('vault.access.show');
 Route::get('/pamphlets/create', [PamphletController::class, 'create'])->name('pamphlets.create');
 Route::post('/pamphlets', [PamphletController::class, 'store'])->name('pamphlets.store');
+Route::get('/pamphlets/{pamphlet}/edit', [PamphletController::class, 'edit'])->name('pamphlets.edit');
+Route::put('/pamphlets/{pamphlet}', [PamphletController::class, 'update'])->name('pamphlets.update');
 Route::get('/pamphlets/{pamphlet}', [PamphletController::class, 'show'])->name('pamphlets.show');
 Route::get('/pamphlets/{pamphlet}/continue', [PaymentController::class, 'continueToCheckout'])->name('pamphlets.continue');
 

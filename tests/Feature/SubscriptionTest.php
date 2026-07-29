@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\PayfastService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -76,6 +77,32 @@ it('rejects subscribing to a once-off package', function () {
     $this->actingAs($user)
         ->post(route('subscriptions.store', $package))
         ->assertNotFound();
+});
+
+it('renders vault subscription checkout with pricing props', function () {
+    $package = SubscriptionPackage::factory()->create([
+        'name' => 'Vault Monthly',
+        'billing_interval' => 'monthly',
+        'price_cents' => 9900,
+        'currency' => 'ZAR',
+    ]);
+    $subscription = Subscription::factory()->create([
+        'subscription_package_id' => $package->id,
+        'status' => SubscriptionStatus::Pending,
+    ]);
+
+    $this->actingAs($subscription->user)
+        ->get(route('subscriptions.checkout', $subscription))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('subscriptions/Checkout')
+            ->where('packageName', 'Vault Monthly')
+            ->where('amount_cents', 9900)
+            ->where('currency', 'ZAR')
+            ->where('billing_interval', 'monthly')
+            ->where('autoSubmit', true)
+            ->has('checkoutUrl')
+            ->has('payload'));
 });
 
 it('builds a recurring checkout payload with subscription fields', function () {

@@ -3,7 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import { Check, Globe, Printer, QrCode, Share2 } from 'lucide-vue-next';
 import PamphletSamplePreview from '@/components/marketing/PamphletSamplePreview.vue';
 import { Button } from '@/components/ui/button';
-import { create } from '@/routes/pamphlets';
+import { register } from '@/routes';
 
 const benefits = [
     {
@@ -46,15 +46,10 @@ const benefits = [
                     </div>
 
                     <ul class="space-y-4" role="list">
-                        <li
-                            v-for="benefit in benefits"
-                            :key="benefit.text"
-                            class="flex gap-3"
-                        >
+                        <li v-for="benefit in benefits" :key="benefit.text" class="flex gap-3">
                             <span
                                 class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-strong"
-                                aria-hidden="true"
-                            >
+                                aria-hidden="true">
                                 <component :is="benefit.icon" class="size-4" />
                             </span>
                             <span class="text-body text-pretty">{{ benefit.text }}</span>
@@ -62,7 +57,7 @@ const benefits = [
                     </ul>
 
                     <Button as-child size="lg">
-                        <Link :href="create()">Create memorial</Link>
+                        <Link :href="register()">Create memorial</Link>
                     </Button>
                 </div>
 

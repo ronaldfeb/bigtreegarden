@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
+use Laravel\Fortify\Features;
 
 class SubscriptionController extends Controller
 {
@@ -72,10 +73,18 @@ class SubscriptionController extends Controller
             ]);
         }
 
+        $subscription->loadMissing('package');
+        $package = $subscription->package;
+
         return Inertia::render('subscriptions/Checkout', [
             'checkoutUrl' => $payfastService->checkoutUrl(),
             'payload' => $payfastService->buildSubscriptionCheckoutPayload($subscription, $transaction),
-            'packageName' => $subscription->package->name,
+            'packageName' => $package->name,
+            'amount_cents' => $package->price_cents,
+            'currency' => $package->currency,
+            'billing_interval' => $package->billing_interval,
+            'autoSubmit' => true,
+            'canRegister' => Features::enabled(Features::registration()),
         ]);
     }
 

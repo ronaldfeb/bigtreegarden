@@ -15,9 +15,11 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
+use Laravel\Fortify\Features;
 
 class PaymentController extends Controller
 {
@@ -52,36 +54,23 @@ class PaymentController extends Controller
             return redirect()->route('memorial.edit', $pamphlet);
         }
 
-        $package = SubscriptionPackage::memorialPagePackage();
-
-        abort_if($package === null, 503, 'Memorial page pricing is not configured.');
-
-        $transaction = $pamphlet->transactions()
-            ->where('status', TransactionStatus::Initiated)
-            ->latest()
-            ->first();
-
-        if ($transaction === null) {
-            $transaction = $pamphlet->transactions()->create([
-                'user_id' => request()->user()->id,
-                'type' => TransactionType::PamphletPurchase,
-                'provider' => 'payfast',
-                'merchant_reference' => (string) Str::ulid(),
-                'amount_cents' => $package->price_cents,
-                'currency' => $package->currency,
-                'status' => TransactionStatus::Initiated,
-            ]);
-        } elseif ($transaction->amount_cents !== $package->price_cents || $transaction->currency !== $package->currency) {
-            $transaction->update([
-                'amount_cents' => $package->price_cents,
-                'currency' => $package->currency,
-            ]);
+        if ($pamphlet->status === PamphletStatus::Draft) {
+            $pamphlet->update(['status' => PamphletStatus::PendingPayment]);
         }
 
+        $checkout = $this->buildPayfastCheckout($pamphlet, $payfastService);
+
+        $pamphlet->load(['background', 'style', 'memorialPage.personOfInterest']);
+
         return Inertia::render('payments/Checkout', [
-            'checkoutUrl' => $payfastService->checkoutUrl(),
-            'payload' => $payfastService->buildCheckoutPayload($pamphlet, $transaction),
-            'paymentId' => $transaction->id,
+            ...$checkout,
+            'paymentId' => $checkout['payment_id'],
+            'amount_cents' => $checkout['amount_cents'],
+            'currency' => $checkout['currency'],
+            'autoSubmit' => true,
+            'pamphlet' => $this->pamphletPreviewPayload($pamphlet),
+            'pricing' => $this->memorialPricingPayload(),
+            'canRegister' => Features::enabled(Features::registration()),
         ]);
     }
 
@@ -173,5 +162,105 @@ class PaymentController extends Controller
         }
 
         return response('OK', 200);
+    }
+
+    /**
+     * @return array{
+     *     checkoutUrl: string,
+     *     payload: array<string, mixed>,
+     *     payment_id: string,
+     *     amount_cents: int,
+     *     currency: string
+     * }
+     */
+    private function buildPayfastCheckout(MemorialPagePamphlet $pamphlet, PayfastService $payfastService): array
+    {
+        $package = SubscriptionPackage::memorialPagePackage();
+
+        abort_if($package === null, 503, 'Memorial page pricing is not configured.');
+
+        $transaction = $pamphlet->transactions()
+            ->where('status', TransactionStatus::Initiated)
+            ->latest()
+            ->first();
+
+        if ($transaction === null) {
+            $transaction = $pamphlet->transactions()->create([
+                'user_id' => request()->user()->id,
+                'type' => TransactionType::PamphletPurchase,
+                'provider' => 'payfast',
+                'merchant_reference' => (string) Str::ulid(),
+                'amount_cents' => $package->price_cents,
+                'currency' => $package->currency,
+                'status' => TransactionStatus::Initiated,
+            ]);
+        } elseif ($transaction->amount_cents !== $package->price_cents || $transaction->currency !== $package->currency) {
+            $transaction->update([
+                'amount_cents' => $package->price_cents,
+                'currency' => $package->currency,
+            ]);
+        }
+
+        return [
+            'checkoutUrl' => $payfastService->checkoutUrl(),
+            'payload' => $payfastService->buildCheckoutPayload($pamphlet, $transaction),
+            'payment_id' => $transaction->id,
+            'amount_cents' => $transaction->amount_cents,
+            'currency' => $transaction->currency,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function pamphletPreviewPayload(MemorialPagePamphlet $pamphlet): array
+    {
+        $imagePath = $pamphlet->uploaded_image_path;
+
+        return [
+            'id' => $pamphlet->id,
+            'heading' => $pamphlet->heading,
+            'person_full_name' => $pamphlet->person_full_name,
+            'date_of_birth' => optional($pamphlet->date_of_birth)->toDateString(),
+            'date_of_passing' => optional($pamphlet->date_of_passing)->toDateString(),
+            'date_format' => $pamphlet->date_format,
+            'image_shape' => $pamphlet->image_shape,
+            'image_crop_mode' => $pamphlet->image_crop_mode,
+            'short_text' => $pamphlet->short_text,
+            'uploaded_image_url' => ($imagePath !== null && $imagePath !== '')
+                ? Storage::disk((string) config('filesystems.media', 'public'))->url($imagePath)
+                : null,
+            'public_slug' => $pamphlet->public_slug,
+            'status' => $pamphlet->status?->value ?? $pamphlet->status,
+            'background_asset_path' => $pamphlet->background?->asset_path,
+            'font_family' => $pamphlet->style?->font_family ?? 'Georgia',
+            'heading_color' => $pamphlet->style?->heading_color ?? '#000000',
+            'name_color' => $pamphlet->style?->name_color ?? '#000000',
+            'short_text_color' => $pamphlet->style?->short_text_color ?? '#000000',
+            'dates_color' => $pamphlet->style?->dates_color ?? '#000000',
+            'pamphlet_qr_code' => $pamphlet->memorialPage?->personOfInterest ? [
+                'target_url' => route('memorial.public.show', $pamphlet->public_slug),
+                'image_path' => $pamphlet->memorialPage->personOfInterest->qr_code_path,
+            ] : null,
+        ];
+    }
+
+    /**
+     * @return array{name: string, price_cents: int, currency: string, billing_interval: string}|null
+     */
+    private function memorialPricingPayload(): ?array
+    {
+        $package = SubscriptionPackage::memorialPagePackage();
+
+        if ($package === null) {
+            return null;
+        }
+
+        return [
+            'name' => $package->name,
+            'price_cents' => $package->price_cents,
+            'currency' => $package->currency,
+            'billing_interval' => $package->billing_interval,
+        ];
     }
 }

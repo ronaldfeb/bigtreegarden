@@ -22,7 +22,10 @@ class MemorialPagePamphletStyleFactory extends Factory
             'is_bold' => fake()->boolean(),
             'is_italic' => fake()->boolean(),
             'date_format' => 'd M Y',
-            'text_color' => fake()->optional()->hexColor(),
+            'heading_color' => '#000000',
+            'name_color' => '#000000',
+            'short_text_color' => '#000000',
+            'dates_color' => '#000000',
         ];
     }
 }

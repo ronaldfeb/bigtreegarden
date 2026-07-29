@@ -16,7 +16,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'is_bold',
     'is_italic',
     'date_format',
-    'text_color',
+    'heading_color',
+    'name_color',
+    'short_text_color',
+    'dates_color',
 ])]
 class MemorialPagePamphletStyle extends Model
 {

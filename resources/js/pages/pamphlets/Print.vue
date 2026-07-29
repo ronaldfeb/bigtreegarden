@@ -19,33 +19,49 @@ const props = defineProps<{
         font_family: string;
         is_bold: boolean;
         is_italic: boolean;
+        heading_color: string;
+        name_color: string;
+        short_text_color: string;
+        dates_color: string;
         qr_code_image_path: string | null;
         qr_code_target_url: string | null;
     };
 }>();
 
-const printTextStyle = computed(() => ({
+const baseTextStyle = computed(() => ({
     fontFamily: props.pamphlet.font_family || 'Georgia',
     fontWeight: props.pamphlet.is_bold ? '700' : '400',
     fontStyle: props.pamphlet.is_italic ? 'italic' : 'normal',
 }));
 
-const formattedDateRange = computed(() => {
-    return `${formatDate(props.pamphlet.date_of_birth)} - ${formatDate(props.pamphlet.date_of_passing)}`;
-});
+const headingStyle = computed(() => ({
+    ...baseTextStyle.value,
+    color: props.pamphlet.heading_color || '#000000',
+}));
 
-const backgroundImageStyle = computed(() =>
-    props.pamphlet.background_asset_path
-        ? {
-            backgroundImage: `url('/${props.pamphlet.background_asset_path}')`,
-        }
-        : { backgroundColor: 'rgb(245 245 245)' },
-);
+const nameStyle = computed(() => ({
+    ...baseTextStyle.value,
+    color: props.pamphlet.name_color || '#000000',
+}));
+
+const shortTextStyle = computed(() => ({
+    ...baseTextStyle.value,
+    color: props.pamphlet.short_text_color || '#000000',
+}));
+
+const dateStyle = computed(() => ({
+    ...baseTextStyle.value,
+    color: props.pamphlet.dates_color || '#000000',
+}));
+
+const formattedDateRange = computed(() => {
+    return `${formatDate(props.pamphlet.date_of_birth)} – ${formatDate(props.pamphlet.date_of_passing)}`;
+});
 
 const memorialImageContainerClasses = computed(() =>
     props.pamphlet.image_shape === 'circle'
-        ? 'mx-auto h-72 w-72 overflow-hidden rounded-full border border-border bg-white/85'
-        : 'mx-auto h-80 w-full max-w-2xl overflow-hidden rounded-lg border border-border bg-white/85',
+        ? 'mx-auto h-72 w-72 shrink-0 overflow-hidden rounded-full border border-black/10'
+        : 'mx-auto h-80 w-full max-w-2xl shrink-0 overflow-hidden rounded-lg border border-black/10',
 );
 
 const memorialImageClasses = computed(() =>
@@ -92,62 +108,64 @@ const handlePrint = (): void => {
 
     <Head title="Print Pamphlet" />
 
-    <div class="min-h-screen bg-background px-4 py-6 text-foreground print:bg-white print:p-0">
-        <div class="print-hidden mx-auto flex w-full max-w-5xl items-center justify-between pb-4">
+    <div
+        class="min-h-screen min-w-0 overflow-x-hidden bg-background px-4 py-6 text-foreground print:bg-white print:p-0">
+        <div class="print-hidden mx-auto flex w-full min-w-0 max-w-5xl items-center justify-between pb-4">
             <Link :href="`/pamphlets/${pamphlet.id}`" class="text-sm text-muted-foreground hover:text-foreground">
                 Back to pamphlet
             </Link>
+            <button type="button"
+                class="inline-flex items-center rounded-md bg-primary px-5 py-2.5 text-primary-foreground text-sm"
+                @click="handlePrint">
+                Print
+            </button>
         </div>
 
-        <main class="mx-auto w-full max-w-6xl space-y-6 print:max-w-none print:space-y-0">
+        <main class="mx-auto w-full min-w-0 max-w-6xl space-y-6 overflow-x-hidden print:max-w-none print:space-y-0">
             <section
-                class="relative min-h-screen overflow-hidden rounded-2xl border border-border bg-center bg-cover bg-no-repeat shadow-sm print:rounded-none print:border-none print:shadow-none"
-                :style="backgroundImageStyle">
+                class="relative mx-auto w-full min-w-0 max-w-3xl overflow-hidden rounded-2xl border border-border bg-muted shadow-sm print:max-w-none print:rounded-none print:border-none print:shadow-none">
+                <img v-if="pamphlet.background_asset_path" :src="`/${pamphlet.background_asset_path}`" alt=""
+                    class="pointer-events-none block h-auto w-full max-w-full select-none print:max-h-none" />
+                <div v-else class="aspect-[3/4] min-h-[80vh] w-full bg-muted print:min-h-screen" aria-hidden="true" />
+
                 <div
-                    class="relative flex min-h-screen flex-col justify-between p-8 text-foreground bg-black/10 print:bg-black/35">
-                    <div class="space-y-4 text-center">
-                        <h1 class="text-balance font-semibold text-4xl leading-tight md:text-5xl"
-                            :style="printTextStyle">
+                    class="absolute inset-0 flex flex-col justify-between overflow-hidden px-8 py-10 text-center sm:px-10 print:px-10 print:py-12">
+                    <div class="w-full min-w-0 space-y-4">
+                        <h1 class="w-full break-words text-balance font-semibold text-4xl leading-tight md:text-5xl"
+                            :style="headingStyle">
                             {{ pamphlet.heading }}
                         </h1>
-                        <p class="text-xl md:text-2xl" :style="printTextStyle">{{ pamphlet.person_full_name }}</p>
-                        <p class="text-sm md:text-base" :style="printTextStyle">{{ formattedDateRange }}</p>
+                        <p class="w-full break-words text-xl md:text-2xl" :style="nameStyle">
+                            {{ pamphlet.person_full_name }}
+                        </p>
+                        <p class="w-full text-sm md:text-base" :style="dateStyle">{{ formattedDateRange }}</p>
                     </div>
 
-                    <div class="mx-auto w-full max-w-4xl space-y-5 rounded-xl bg-white/55 p-6 text-center">
+                    <div
+                        class="mx-auto flex w-full min-w-0 max-w-4xl flex-1 flex-col items-center justify-center gap-5 overflow-hidden">
                         <div :class="memorialImageContainerClasses">
-                            <img
-                                v-if="pamphlet.uploaded_image_url"
-                                :src="pamphlet.uploaded_image_url"
-                                alt="Memorial image"
-                                :class="memorialImageClasses"
-                            />
+                            <img v-if="pamphlet.uploaded_image_url" :src="pamphlet.uploaded_image_url"
+                                alt="Memorial image" :class="memorialImageClasses" />
                         </div>
 
-                        <p class="mx-auto max-w-3xl whitespace-pre-wrap text-sm leading-relaxed md:text-base"
-                            :style="printTextStyle">
+                        <p class="w-full max-w-3xl break-words whitespace-pre-wrap text-sm leading-relaxed md:text-base"
+                            :style="shortTextStyle">
                             {{ pamphlet.short_text }}
                         </p>
                     </div>
 
-                    <div class="mt-6 flex flex-col items-center gap-2 text-center">
+                    <div class="mt-6 flex shrink-0 flex-col items-center gap-2 text-center">
                         <div class="rounded-xl bg-white p-3">
                             <img v-if="pamphlet.qr_code_image_path" :src="pamphlet.qr_code_image_path"
                                 alt="Memorial page QR code" class="h-28 w-28" />
                         </div>
-                        <p class="text-xs uppercase tracking-wide">Scan to view memorial page</p>
-                        <p class="max-w-sm break-all text-[11px] opacity-90">{{ pamphlet.qr_code_target_url }}</p>
+                        <p class="text-xs uppercase tracking-wide" :style="dateStyle">Scan to view memorial page</p>
+                        <p class="max-w-sm break-all text-[11px] opacity-90" :style="dateStyle">
+                            {{ pamphlet.qr_code_target_url }}
+                        </p>
                     </div>
                 </div>
             </section>
-
-            <div class="print-hidden flex justify-center pb-6">
-                <button type="button"
-                    class="inline-flex items-center rounded-md bg-primary px-5 py-2.5 text-primary-foreground text-sm"
-                    @click="handlePrint">
-                    Print
-                </button>
-            </div>
         </main>
     </div>
 </template>

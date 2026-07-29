@@ -17,6 +17,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Public Media Disk
+    |--------------------------------------------------------------------------
+    |
+    | Disk used for publicly accessible user uploads (pamphlet images, etc.).
+    | Locally this defaults to the "public" disk. On Laravel Cloud, leave
+    | MEDIA_DISK unset so it follows FILESYSTEM_DISK (injected as your Object
+    | Storage bucket, typically "s3"), or set MEDIA_DISK to the Cloud disk name.
+    |
+    */
+
+    'media' => env('MEDIA_DISK') ?: (
+        env('FILESYSTEM_DISK', 'local') === 'local' ? 'public' : env('FILESYSTEM_DISK', 'public')
+    ),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |
@@ -56,6 +72,7 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'public',
             'throw' => false,
             'report' => false,
         ],

@@ -6,7 +6,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StorePamphletRequest extends FormRequest
+class UpdatePamphletRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -34,7 +34,7 @@ class StorePamphletRequest extends FormRequest
             'image_crop_mode' => ['required', 'string', Rule::in(['cover', 'contain'])],
             'short_text' => ['required', 'string', 'max:2000'],
             'background_id' => ['required', 'uuid', Rule::exists('memorial_page_pamphlet_backgrounds', 'id')],
-            'image' => ['required', 'image', 'max:5120'],
+            'image' => ['nullable', 'image', 'max:5120'],
             'heading_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'name_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'short_text_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
