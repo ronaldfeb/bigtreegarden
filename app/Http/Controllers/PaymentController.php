@@ -11,11 +11,11 @@ use App\Models\Transaction;
 use App\Services\GuestPamphletDraftService;
 use App\Services\PamphletPaymentFulfillmentService;
 use App\Services\PayfastService;
+use App\Support\MediaStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -227,9 +227,7 @@ class PaymentController extends Controller
             'image_shape' => $pamphlet->image_shape,
             'image_crop_mode' => $pamphlet->image_crop_mode,
             'short_text' => $pamphlet->short_text,
-            'uploaded_image_url' => ($imagePath !== null && $imagePath !== '')
-                ? Storage::disk((string) config('filesystems.media', 'public'))->url($imagePath)
-                : null,
+            'uploaded_image_url' => MediaStorage::url($imagePath),
             'public_slug' => $pamphlet->public_slug,
             'status' => $pamphlet->status?->value ?? $pamphlet->status,
             'background_asset_path' => $pamphlet->background?->asset_path,

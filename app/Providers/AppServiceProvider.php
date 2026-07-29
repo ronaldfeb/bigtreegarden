@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Enums\StaffRole;
 use App\Models\StaffUser;
 use App\Models\User;
+use App\Support\MediaStorage;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Date;
@@ -37,11 +38,17 @@ class AppServiceProvider extends ServiceProvider
     {
         $cloudPublicDisk = config('filesystems.disks.btg_public');
 
-        if (! is_array($cloudPublicDisk) || ($cloudPublicDisk['driver'] ?? null) !== 's3') {
-            return;
+        if (is_array($cloudPublicDisk) && ($cloudPublicDisk['driver'] ?? null) === 's3') {
+            // Laravel Cloud injects the Object Storage bucket as btg_public.
+            // Remap "public" so existing disk('public') callers use S3 in production.
+            Config::set('filesystems.disks.public', $cloudPublicDisk);
+
+            if (! env('MEDIA_DISK')) {
+                Config::set('filesystems.media', 'public');
+            }
         }
 
-        Config::set('filesystems.disks.public', $cloudPublicDisk);
+        MediaStorage::assertNotLocalInProduction();
     }
 
     protected function configureStaffGates(): void

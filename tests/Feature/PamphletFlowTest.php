@@ -392,7 +392,7 @@ it('allows an owner to open the print view', function () {
     $response->assertSuccessful();
     $response->assertInertia(fn ($page) => $page
         ->component('pamphlets/Print')
-        ->where('pamphlet.uploaded_image_url', Storage::disk(config('filesystems.media'))->url($imagePath))
+        ->where('pamphlet.uploaded_image_url', '/storage/'.$imagePath)
         ->where('pamphlet.heading_color', '#112233')
         ->where('pamphlet.name_color', '#AABBCC')
         ->where('pamphlet.short_text_color', '#445566')
@@ -429,6 +429,11 @@ it('creates a person of interest qr code when opening print view if missing', fu
 });
 
 it('includes style colors and pricing on the pamphlet review page', function () {
+    Storage::fake(config('filesystems.media'));
+
+    $imagePath = 'pamphlets/images/review.jpg';
+    Storage::disk(config('filesystems.media'))->put($imagePath, 'fake-image');
+
     SubscriptionPackage::factory()->create([
         'slug' => 'memorial-page',
         'name' => 'Memorial Page',
@@ -440,6 +445,7 @@ it('includes style colors and pricing on the pamphlet review page', function () 
 
     $pamphlet = MemorialPagePamphlet::factory()->create([
         'status' => PamphletStatus::Draft,
+        'uploaded_image_path' => $imagePath,
     ]);
 
     $pamphlet->style()->update([
@@ -458,6 +464,7 @@ it('includes style colors and pricing on the pamphlet review page', function () 
         ->where('pamphlet.name_color', '#AABBCC')
         ->where('pamphlet.short_text_color', '#445566')
         ->where('pamphlet.dates_color', '#778899')
+        ->where('pamphlet.uploaded_image_url', '/storage/'.$imagePath)
         ->where('pricing.price_cents', 69900)
         ->where('pricing.currency', 'ZAR')
     );

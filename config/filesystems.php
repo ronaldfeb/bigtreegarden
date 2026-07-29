@@ -20,10 +20,11 @@ return [
     | Public Media Disk
     |--------------------------------------------------------------------------
     |
-    | Disk used for publicly accessible user uploads (pamphlet images, etc.).
-    | Locally this defaults to the "public" disk. On Laravel Cloud, leave
-    | MEDIA_DISK unset so it follows FILESYSTEM_DISK (injected as your Object
-    | Storage bucket, typically "s3"), or set MEDIA_DISK to the Cloud disk name.
+    | Disk used for publicly accessible user uploads (pamphlets, etc.).
+    | Locally this defaults to the "public" disk. In production, do not use
+    | a local disk — leave MEDIA_DISK unset on Laravel Cloud (the "public"
+    | disk is remapped to Object Storage), or set MEDIA_DISK / FILESYSTEM_DISK
+    | to your S3-compatible bucket disk (e.g. "s3").
     |
     */
 

@@ -14,6 +14,7 @@ use App\Models\SubscriptionPackage;
 use App\Services\BackgroundRecommendationService;
 use App\Services\GuestPamphletDraftService;
 use App\Services\QrCodeService;
+use App\Support\MediaStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -221,7 +222,7 @@ class PamphletController extends Controller
                 'date_format' => $pamphlet->date_format,
                 'short_text' => $pamphlet->short_text,
                 'uploaded_image_path' => $pamphlet->uploaded_image_path,
-                'uploaded_image_url' => $this->publicStorageUrl($pamphlet->uploaded_image_path),
+                'uploaded_image_url' => MediaStorage::url($pamphlet->uploaded_image_path),
                 'image_shape' => $pamphlet->image_shape,
                 'image_crop_mode' => $pamphlet->image_crop_mode,
                 'background_asset_path' => $pamphlet->background?->asset_path,
@@ -273,7 +274,7 @@ class PamphletController extends Controller
             'image_crop_mode' => $pamphlet->image_crop_mode,
             'short_text' => $pamphlet->short_text,
             'uploaded_image_path' => $pamphlet->uploaded_image_path,
-            'uploaded_image_url' => $this->publicStorageUrl($pamphlet->uploaded_image_path),
+            'uploaded_image_url' => MediaStorage::url($pamphlet->uploaded_image_path),
             'public_slug' => $pamphlet->public_slug,
             'status' => $pamphlet->status?->value ?? $pamphlet->status,
             'paid_at' => optional($pamphlet->paid_at)?->toIso8601String(),
@@ -308,7 +309,7 @@ class PamphletController extends Controller
             'image_crop_mode' => $pamphlet->image_crop_mode ?? 'cover',
             'short_text' => $pamphlet->short_text,
             'background_id' => $pamphlet->background_id,
-            'uploaded_image_url' => $this->publicStorageUrl($pamphlet->uploaded_image_path),
+            'uploaded_image_url' => MediaStorage::url($pamphlet->uploaded_image_path),
             'font_family' => $pamphlet->style?->font_family ?? 'Georgia',
             'heading_color' => $pamphlet->style?->heading_color ?? '#000000',
             'name_color' => $pamphlet->style?->name_color ?? '#000000',
@@ -336,18 +337,9 @@ class PamphletController extends Controller
         ];
     }
 
-    private function publicStorageUrl(?string $path): ?string
-    {
-        if ($path === null || $path === '') {
-            return null;
-        }
-
-        return Storage::disk($this->mediaDisk())->url($path);
-    }
-
     private function mediaDisk(): string
     {
-        return (string) config('filesystems.media', 'public');
+        return MediaStorage::disk();
     }
 
     /**
