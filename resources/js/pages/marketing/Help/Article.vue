@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import MarketingLayout from '@/layouts/marketing/MarketingLayout.vue';
-import { topic } from '@/routes/help';
+import { topic as helpTopic } from '@/routes/help';
 
 defineProps<{
     canRegister?: boolean;
@@ -39,7 +39,7 @@ function formatDate(iso: string | null): string {
     <MarketingLayout :can-register="canRegister">
         <article class="mx-auto min-w-0 max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
             <Link
-                :href="topic.url(topic.slug)"
+                :href="helpTopic.url(topic.slug)"
                 class="text-muted-foreground text-sm hover:text-foreground"
             >
                 ← {{ topic.name }}

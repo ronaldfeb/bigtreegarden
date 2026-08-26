@@ -8,8 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import StaffLayout from '@/layouts/staff/StaffLayout.vue';
-import { index, show, store, update } from '@/routes/staff/content/help-center-topics';
-
+import { index, store } from '@/routes/staff/content/help-center-topics';
 </script>
 
 <template>

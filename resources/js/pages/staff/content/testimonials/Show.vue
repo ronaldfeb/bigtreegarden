@@ -4,8 +4,7 @@ import StaffPageHeader from '@/components/staff/StaffPageHeader.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import StaffLayout from '@/layouts/staff/StaffLayout.vue';
-import { index, edit, destroy, show } from '@/routes/staff/content/testimonials';
-
+import { index, edit, destroy } from '@/routes/staff/content/testimonials';
 const props = defineProps<{
     testimonial: Record<string, any>
 }>();

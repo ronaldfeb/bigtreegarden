@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import StaffLayout from '@/layouts/staff/StaffLayout.vue';
-import { index, show, store, update } from '@/routes/staff/content/help-center-articles';
+import { show, update } from '@/routes/staff/content/help-center-articles';
 defineProps<{
     article: Record<string, unknown>;
     topics: Array<{ id: string; name: string }>;

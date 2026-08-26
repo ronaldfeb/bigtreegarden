@@ -212,8 +212,9 @@ function clearFilters(): void {
                         :href="link.url"
                         class="rounded-md border px-3 py-1 text-sm"
                         :class="link.active ? 'border-brand bg-brand-soft text-brand-strong' : 'border-border'"
-                        v-html="link.label"
-                    />
+                    >
+                        <span v-html="link.label" />
+                    </Link>
                     <span
                         v-else
                         class="rounded-md border border-border px-3 py-1 text-sm text-muted-foreground"

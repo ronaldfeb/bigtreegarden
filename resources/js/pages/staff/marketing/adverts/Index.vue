@@ -3,7 +3,7 @@ import { Head } from '@inertiajs/vue3';
 import StaffDataTable from '@/components/staff/StaffDataTable.vue';
 import StaffPageHeader from '@/components/staff/StaffPageHeader.vue';
 import StaffLayout from '@/layouts/staff/StaffLayout.vue';
-import { index, create, show, edit } from '@/routes/staff/marketing/adverts';
+import { create, show, edit } from '@/routes/staff/marketing/adverts';
 import type { Paginated } from '@/types/staff';
 
 defineProps<{

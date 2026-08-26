@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import StaffDataTable from '@/components/staff/StaffDataTable.vue';
 import StaffPageHeader from '@/components/staff/StaffPageHeader.vue';
 import StaffLayout from '@/layouts/staff/StaffLayout.vue';
 import { index, show } from '@/routes/staff/commerce/credit-purchases';
 import type { Paginated } from '@/types/staff';
 
-const props = defineProps<{
+defineProps<{
     purchases: Paginated<Record<string, unknown>>;
     filters: { status: string };
     statuses: Array<{ value: string; label: string }>;

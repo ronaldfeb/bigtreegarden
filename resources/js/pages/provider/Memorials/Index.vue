@@ -10,8 +10,8 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import ProviderLayout from '@/layouts/provider/ProviderLayout.vue';
-import { create, destroy, show } from '@/routes/provider/memorials';
 import { index as creditsIndex } from '@/routes/provider/credits';
+import { create, destroy, show } from '@/routes/provider/memorials';
 
 type Memorial = {
     id: string;

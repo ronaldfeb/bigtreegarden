@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import PamphletPreview, { type PamphletPreviewData } from '@/components/pamphlets/PamphletPreview.vue';
+import PamphletPreview from '@/components/pamphlets/PamphletPreview.vue';
+import type {PamphletPreviewData} from '@/components/pamphlets/PamphletPreview.vue';
 import { Button } from '@/components/ui/button';
 
 defineProps<{

@@ -6,10 +6,9 @@ import StaffPageHeader from '@/components/staff/StaffPageHeader.vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import StaffLayout from '@/layouts/staff/StaffLayout.vue';
-import { index, show, store } from '@/routes/staff/marketing/leads';
 
+import StaffLayout from '@/layouts/staff/StaffLayout.vue';
+import { index, store } from '@/routes/staff/marketing/leads';
 defineProps<{
     adverts: Array<{ id: string; client_name: string; code: string }>;
 }>();

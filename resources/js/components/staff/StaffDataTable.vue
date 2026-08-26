@@ -138,8 +138,9 @@ function rowId(row: T): string {
                             v-if="link.url"
                             :href="link.url"
                             preserve-scroll
-                            v-html="link.label"
-                        />
+                        >
+                            <span v-html="link.label" />
+                        </Link>
                         <span v-else v-html="link.label" />
                     </Button>
                 </div>

@@ -15,7 +15,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { useCurrentUrl } from '@/composables/useCurrentUrl';
+
 import { dashboard } from '@/routes';
 import help from '@/routes/help';
 import policies from '@/routes/policies';

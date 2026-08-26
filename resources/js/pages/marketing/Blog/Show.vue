@@ -3,7 +3,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import MarketingLayout from '@/layouts/marketing/MarketingLayout.vue';
 import { index } from '@/routes/blog';
 
-const props = defineProps<{
+defineProps<{
     canRegister?: boolean;
     blog: {
         id: string;

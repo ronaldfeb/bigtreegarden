@@ -4,7 +4,7 @@ import StaffDataTable from '@/components/staff/StaffDataTable.vue';
 import StaffPageHeader from '@/components/staff/StaffPageHeader.vue';
 import StaffLayout from '@/layouts/staff/StaffLayout.vue';
 import { formatCentsAsRand } from '@/lib/utils';
-import { create, edit, index, show } from '@/routes/staff/commerce/credit-packages';
+import { create, edit, show } from '@/routes/staff/commerce/credit-packages';
 import type { Paginated, StaffTableColumn } from '@/types/staff';
 
 defineProps<{

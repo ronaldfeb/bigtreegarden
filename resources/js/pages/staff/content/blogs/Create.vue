@@ -8,8 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import StaffLayout from '@/layouts/staff/StaffLayout.vue';
-import { index, show, store } from '@/routes/staff/content/blogs';
-
+import { index, store } from '@/routes/staff/content/blogs';
 defineProps<{
     categories: Array<{ id: string; name: string }>;
 }>();
