@@ -8,4 +8,5 @@ enum TransactionType: string
     case FlowerMessage = 'flower_message';
     case Subscription = 'subscription';
     case Vault = 'vault';
+    case ProviderCreditPurchase = 'provider_credit_purchase';
 }

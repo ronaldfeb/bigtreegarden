@@ -8,25 +8,59 @@ use App\Models\ServiceProviderImage;
 use App\Models\ServiceProviderService;
 use App\Models\ServiceProviderSocialMedia;
 use App\Models\ServiceProviderSpeciality;
+use App\Support\MediaStorage;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Fortify\Features;
 
 class ServiceProviderDirectoryController extends Controller
 {
-    public function index(): Response
+    /** @var list<string> */
+    public const PROVINCES = [
+        'Eastern Cape',
+        'Free State',
+        'Gauteng',
+        'KwaZulu-Natal',
+        'Limpopo',
+        'Mpumalanga',
+        'Northern Cape',
+        'North West',
+        'Western Cape',
+    ];
+
+    public function index(Request $request): Response
     {
+        $filters = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'province' => ['nullable', 'string', 'max:255'],
+        ]);
+
         $providers = ServiceProvider::query()
             ->active()
             ->with(['specialities' => fn ($query) => $query->orderBy('sort_order')])
+            ->when(
+                filled($filters['name'] ?? null),
+                fn ($query) => $query->where('name', 'like', '%'.$filters['name'].'%'),
+            )
+            ->when(
+                filled($filters['city'] ?? null),
+                fn ($query) => $query->where('city', 'like', '%'.$filters['city'].'%'),
+            )
+            ->when(
+                filled($filters['province'] ?? null),
+                fn ($query) => $query->where('province', $filters['province']),
+            )
             ->orderBy('name')
-            ->get(['id', 'name', 'slug', 'description', 'logo_path', 'city', 'province'])
-            ->map(fn (ServiceProvider $provider): array => [
+            ->paginate(12)
+            ->withQueryString()
+            ->through(fn (ServiceProvider $provider): array => [
                 'id' => $provider->id,
                 'name' => $provider->name,
                 'slug' => $provider->slug,
                 'description' => $provider->description,
-                'logo_path' => $provider->logo_path,
+                'logo_path' => MediaStorage::url($provider->logo_path),
                 'city' => $provider->city,
                 'province' => $provider->province,
                 'specialities' => $provider->specialities->map(fn (ServiceProviderSpeciality $speciality): array => [
@@ -38,6 +72,13 @@ class ServiceProviderDirectoryController extends Controller
         return Inertia::render('marketing/Providers/Index', [
             'canRegister' => Features::enabled(Features::registration()),
             'providers' => $providers,
+            'filters' => [
+                'name' => $filters['name'] ?? '',
+                'city' => $filters['city'] ?? '',
+                'province' => $filters['province'] ?? '',
+            ],
+            'provinces' => self::PROVINCES,
+            'registerUrl' => route('providers.register'),
         ]);
     }
 
@@ -63,8 +104,8 @@ class ServiceProviderDirectoryController extends Controller
                 'slug' => $serviceProvider->slug,
                 'registration_number' => $serviceProvider->registration_number,
                 'description' => $serviceProvider->description,
-                'logo_path' => $serviceProvider->logo_path,
-                'cover_image_path' => $serviceProvider->cover_image_path,
+                'logo_path' => MediaStorage::url($serviceProvider->logo_path),
+                'cover_image_path' => MediaStorage::url($serviceProvider->cover_image_path),
                 'email' => $serviceProvider->email,
                 'phone' => $serviceProvider->phone,
                 'website_url' => $serviceProvider->website_url,
@@ -88,7 +129,7 @@ class ServiceProviderDirectoryController extends Controller
                 ])->values()->all(),
                 'images' => $serviceProvider->images->map(fn (ServiceProviderImage $image): array => [
                     'id' => $image->id,
-                    'image_path' => $image->image_path,
+                    'image_path' => MediaStorage::url($image->image_path),
                     'caption' => $image->caption,
                 ])->values()->all(),
             ],

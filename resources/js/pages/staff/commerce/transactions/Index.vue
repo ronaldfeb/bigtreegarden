@@ -3,27 +3,29 @@ import { Head } from '@inertiajs/vue3';
 import StaffDataTable from '@/components/staff/StaffDataTable.vue';
 import StaffPageHeader from '@/components/staff/StaffPageHeader.vue';
 import StaffLayout from '@/layouts/staff/StaffLayout.vue';
+import { formatCentsAsRand } from '@/lib/utils';
 import { index, show } from '@/routes/staff/commerce/transactions';
-import type { Paginated } from '@/types/staff';
+import type { Paginated, StaffTableColumn } from '@/types/staff';
 
 defineProps<{
     transactions: Paginated<Record<string, unknown>>;
 }>();
 
-const columns = [
-        {
-            "key": "reference",
-            "label": "Reference"
-        },
-        {
-            "key": "amount_cents",
-            "label": "Amount (cents)"
-        },
-        {
-            "key": "status",
-            "label": "Status"
-        }
-    ];
+const columns: StaffTableColumn<Record<string, unknown>>[] = [
+    {
+        key: 'reference',
+        label: 'Reference',
+    },
+    {
+        key: 'amount_cents',
+        label: 'Amount',
+        format: (row) => formatCentsAsRand(row.amount_cents as number, String(row.currency ?? 'ZAR')),
+    },
+    {
+        key: 'status',
+        label: 'Status',
+    },
+];
 </script>
 
 <template>
@@ -33,7 +35,6 @@ const columns = [
         <StaffPageHeader
             title="Transactions"
             description="Manage transactions."
-            
         />
 
         <StaffDataTable

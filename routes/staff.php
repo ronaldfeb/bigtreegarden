@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Staff\Commerce\PlatformBankDetailController;
+use App\Http\Controllers\Staff\Commerce\ServiceProviderCreditPackageController;
+use App\Http\Controllers\Staff\Commerce\ServiceProviderCreditPurchaseController;
 use App\Http\Controllers\Staff\Commerce\SubscriptionController;
 use App\Http\Controllers\Staff\Commerce\SubscriptionPackageController;
 use App\Http\Controllers\Staff\Commerce\TransactionController;
@@ -68,6 +71,19 @@ Route::resource('content/pamphlet-backgrounds', MemorialPagePamphletBackgroundCo
     ->names('content.pamphlet-backgrounds');
 
 Route::resource('commerce/subscription-packages', SubscriptionPackageController::class)->names('commerce.subscription-packages');
+Route::resource('commerce/credit-packages', ServiceProviderCreditPackageController::class)
+    ->parameters(['credit-packages' => 'creditPackage'])
+    ->names('commerce.credit-packages');
+Route::get('commerce/bank-details', [PlatformBankDetailController::class, 'edit'])->name('commerce.bank-details.edit');
+Route::put('commerce/bank-details', [PlatformBankDetailController::class, 'update'])->name('commerce.bank-details.update');
+Route::get('commerce/credit-purchases', [ServiceProviderCreditPurchaseController::class, 'index'])
+    ->name('commerce.credit-purchases.index');
+Route::get('commerce/credit-purchases/{creditPurchase}', [ServiceProviderCreditPurchaseController::class, 'show'])
+    ->name('commerce.credit-purchases.show');
+Route::post('commerce/credit-purchases/{creditPurchase}/release', [ServiceProviderCreditPurchaseController::class, 'release'])
+    ->name('commerce.credit-purchases.release');
+Route::post('commerce/credit-purchases/{creditPurchase}/reject', [ServiceProviderCreditPurchaseController::class, 'reject'])
+    ->name('commerce.credit-purchases.reject');
 Route::get('commerce/transactions', [TransactionController::class, 'index'])->name('commerce.transactions.index');
 Route::get('commerce/transactions/{transaction}', [TransactionController::class, 'show'])->name('commerce.transactions.show');
 Route::get('commerce/subscriptions', [SubscriptionController::class, 'index'])->name('commerce.subscriptions.index');

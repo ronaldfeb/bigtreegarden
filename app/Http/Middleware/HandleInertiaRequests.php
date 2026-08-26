@@ -44,6 +44,8 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
             ],
             'staffUser' => $user?->staffUser?->loadMissing('user'),
+            'serviceProviderMembership' => $user?->serviceProviderMembership
+                ?->loadMissing('serviceProvider:id,name,slug,status,credits_remaining'),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
                 'status' => fn () => $request->session()->get('status'),

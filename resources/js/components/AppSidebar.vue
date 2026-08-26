@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, CreditCard, HelpCircle, LayoutGrid, Shield, ShieldCheck, Vault } from 'lucide-vue-next';
+import { BookOpen, CreditCard, HelpCircle, LayoutGrid, Shield, ShieldCheck, Store, Vault } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
@@ -15,18 +15,37 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { dashboard } from '@/routes';
 import help from '@/routes/help';
 import policies from '@/routes/policies';
+import { dashboard as providerDashboard } from '@/routes/provider';
 import { dashboard as staffDashboard } from '@/routes/staff';
 import { show as subscriptionShow } from '@/routes/subscriptions';
 import { index as vaultIndex } from '@/routes/vault';
 import type { NavItem } from '@/types';
 import type { StaffUser } from '@/types/staff';
 
-const page = usePage<{ staffUser?: StaffUser | null }>();
+type ServiceProviderMembership = {
+    role: string;
+    service_provider?: {
+        id: string;
+        name: string;
+        slug: string;
+        status: string;
+        credits_remaining: number;
+    } | null;
+};
+
+const page = usePage<{
+    staffUser?: StaffUser | null;
+    serviceProviderMembership?: ServiceProviderMembership | null;
+}>();
 const isStaffUser = computed(
     () => page.props.staffUser?.is_active === true,
+);
+const isProviderMember = computed(
+    () => page.props.serviceProviderMembership != null,
 );
 
 const mainNavItems = computed((): NavItem[] => {
@@ -47,6 +66,14 @@ const mainNavItems = computed((): NavItem[] => {
             icon: CreditCard,
         },
     ];
+
+    if (isProviderMember.value) {
+        items.push({
+            title: 'Provider Portal',
+            href: providerDashboard(),
+            icon: Store,
+        });
+    }
 
     if (isStaffUser.value) {
         items.push({

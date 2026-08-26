@@ -10,11 +10,14 @@ use App\Http\Controllers\Marketing\PartnerDirectoryController;
 use App\Http\Controllers\Marketing\PolicyController;
 use App\Http\Controllers\Marketing\PricingController;
 use App\Http\Controllers\Marketing\ServiceProviderDirectoryController;
+use App\Http\Controllers\Marketing\ServiceProviderRegistrationController;
 use App\Http\Controllers\MemorialPageController;
 use App\Http\Controllers\MemorialPageLiveController;
 use App\Http\Controllers\MemorialPageMessageModerationController;
 use App\Http\Controllers\PamphletController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\Provider\CreditController;
+use App\Http\Controllers\ProviderInvitationController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\User\DashboardController;
 use App\Http\Controllers\Vault\VaultAccessController;
@@ -37,7 +40,11 @@ Route::get('/privacy-policy', [PolicyController::class, 'privacyPolicy'])->name(
 Route::get('/about-us', [PolicyController::class, 'aboutUs'])->name('policies.about');
 Route::get('/partners', [PartnerDirectoryController::class, 'index'])->name('partners.index');
 Route::get('/providers', [ServiceProviderDirectoryController::class, 'index'])->name('providers.index');
+Route::get('/providers/register', [ServiceProviderRegistrationController::class, 'create'])->name('providers.register');
+Route::post('/providers/register', [ServiceProviderRegistrationController::class, 'store'])->name('providers.register.store');
 Route::get('/providers/{serviceProvider:slug}', [ServiceProviderDirectoryController::class, 'show'])->name('providers.show');
+Route::get('/provider-invitations/{token}', [ProviderInvitationController::class, 'show'])->name('provider-invitations.show');
+Route::post('/provider-invitations/{token}', [ProviderInvitationController::class, 'store'])->name('provider-invitations.store');
 Route::get('/a/{code}', MarketingAdvertRedirectController::class)->name('marketing.adverts.redirect');
 Route::get('/ambassadors/{ambassador}', [AmbassadorController::class, 'show'])->name('ambassadors.show');
 
@@ -48,6 +55,8 @@ Route::get('/memorial/{slug}/live/messages', [MemorialPageLiveController::class,
 Route::post('/payments/{pamphlet}/notify', [PaymentController::class, 'handleNotify'])->name('payments.notify');
 Route::post('/payments/subscriptions/{subscription}/notify', [SubscriptionController::class, 'handleNotify'])->name('subscriptions.notify');
 Route::post('/payments/flowers/{message}/notify', [FlowerPaymentController::class, 'handleNotify'])->name('flowers.notify');
+Route::post('/payments/provider-credits/{purchase}/notify', [CreditController::class, 'handleNotify'])
+    ->name('provider.credits.notify');
 
 Route::get('/vault/access', [VaultAccessController::class, 'create'])->name('vault.access.create');
 Route::post('/vault/access', [VaultAccessController::class, 'store'])->name('vault.access.store');

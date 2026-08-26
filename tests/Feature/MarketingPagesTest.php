@@ -178,8 +178,8 @@ it('renders active service providers', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('marketing/Providers/Index')
-            ->has('providers', 1)
-            ->where('providers.0.name', 'Active Provider'),
+            ->has('providers.data', 1)
+            ->where('providers.data.0.name', 'Active Provider'),
         );
 });
 

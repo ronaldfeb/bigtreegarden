@@ -39,7 +39,7 @@ const columns = [
         <StaffDataTable
             :columns="columns"
             :paginator="serviceProviders"
-            :row-actions="[{ label: 'View', href: (row) => show(row.id) }, { label: 'Edit', href: (row) => edit(row.id) }]"
+            :row-actions="[{ label: 'View', href: (row) => show(String(row.slug)) }, { label: 'Edit', href: (row) => edit(String(row.slug)) }]"
         />
     </StaffLayout>
 </template>

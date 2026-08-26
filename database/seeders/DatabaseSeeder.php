@@ -14,6 +14,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             ContentSeeder::class,
             SubscriptionPackageSeeder::class,
+            ServiceProviderCreditPackageSeeder::class,
+            PlatformBankDetailSeeder::class,
             TestimonialSeeder::class,
             PartnerSeeder::class,
             BackgroundCatalogSeeder::class,

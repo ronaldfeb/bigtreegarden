@@ -12,10 +12,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'memorial_page_id',
     'background_id',
+    'service_provider_background_id',
     'heading',
     'short_text',
     'date_format',
@@ -29,7 +31,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class MemorialPagePamphlet extends Model
 {
     /** @use HasFactory<MemorialPagePamphletFactory> */
-    use HasDomainTimestamps, HasFactory, HasUuids;
+    use HasDomainTimestamps, HasFactory, HasUuids, SoftDeletes;
 
     protected function casts(): array
     {
@@ -47,6 +49,11 @@ class MemorialPagePamphlet extends Model
     public function background(): BelongsTo
     {
         return $this->belongsTo(MemorialPagePamphletBackground::class, 'background_id');
+    }
+
+    public function serviceProviderBackground(): BelongsTo
+    {
+        return $this->belongsTo(ServiceProviderBackground::class, 'service_provider_background_id');
     }
 
     public function style(): HasOne
@@ -82,6 +89,29 @@ class MemorialPagePamphlet extends Model
         $owner = $this->owner();
 
         return $owner !== null && $owner->is($user);
+    }
+
+    public function canBeManagedBy(?User $user): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+
+        if ($this->isOwnedBy($user)) {
+            return true;
+        }
+
+        $this->loadMissing('memorialPage.personOfInterest.serviceProvider.memberships');
+
+        $personOfInterest = $this->memorialPage?->personOfInterest;
+        $serviceProvider = $personOfInterest?->serviceProvider;
+
+        if ($serviceProvider === null) {
+            return false;
+        }
+
+        return $serviceProvider->memberships
+            ->contains(fn (ServiceProviderUser $membership): bool => $membership->user_id === $user->id);
     }
 
     public function getPersonFullNameAttribute(): ?string

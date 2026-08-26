@@ -19,7 +19,7 @@ class MemorialPageController extends Controller
 {
     public function edit(MemorialPagePamphlet $pamphlet): Response
     {
-        abort_unless($pamphlet->isOwnedBy(request()->user()), 403);
+        abort_unless($pamphlet->canBeManagedBy(request()->user()), 403);
         abort_unless(in_array($pamphlet->status, [PamphletStatus::Paid, PamphletStatus::Published], true), 403);
 
         $pamphlet->load([
@@ -42,7 +42,7 @@ class MemorialPageController extends Controller
 
     public function update(UpdateMemorialPageRequest $request, MemorialPagePamphlet $pamphlet): RedirectResponse
     {
-        abort_unless($pamphlet->isOwnedBy(request()->user()), 403);
+        abort_unless($pamphlet->canBeManagedBy(request()->user()), 403);
 
         $validated = $request->validated();
         $pamphlet->style()->updateOrCreate([], [

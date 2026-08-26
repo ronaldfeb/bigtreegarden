@@ -80,6 +80,21 @@ test('staff can view the subscriptions index with a status filter', function () 
             ->where('filters.status', 'active'));
 });
 
+test('staff can view a pending service provider by slug', function () {
+    $staff = oversightStaffUser();
+    $serviceProvider = ServiceProvider::factory()->create();
+
+    expect($serviceProvider->status)->toBe('pending');
+
+    $this->actingAs($staff)
+        ->get(route('staff.directory.service-providers.show', $serviceProvider))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('staff/directory/service-providers/Show')
+            ->where('serviceProvider.slug', $serviceProvider->slug)
+            ->where('serviceProvider.status', 'pending'));
+});
+
 test('staff can approve a pending service provider', function () {
     $staff = oversightStaffUser();
     $serviceProvider = ServiceProvider::factory()->create();

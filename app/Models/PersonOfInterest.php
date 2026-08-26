@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'created_by_user_id',
+    'service_provider_id',
     'guest_token_hash',
     'guest_token_expires_at',
     'first_name',
@@ -54,6 +55,11 @@ class PersonOfInterest extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function serviceProvider(): BelongsTo
+    {
+        return $this->belongsTo(ServiceProvider::class);
     }
 
     public function users(): BelongsToMany

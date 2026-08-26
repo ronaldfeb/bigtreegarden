@@ -18,6 +18,7 @@ class EnsureUserIsServiceProviderMember
         }
 
         $membership = ServiceProviderUser::query()
+            ->with('serviceProvider')
             ->where('user_id', $user->id)
             ->first();
 

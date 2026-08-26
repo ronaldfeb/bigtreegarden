@@ -40,6 +40,9 @@ import {
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { dashboard } from '@/routes/staff';
+import { edit as bankDetailsEdit } from '@/routes/staff/commerce/bank-details';
+import { index as creditPackagesIndex } from '@/routes/staff/commerce/credit-packages';
+import { index as creditPurchasesIndex } from '@/routes/staff/commerce/credit-purchases';
 import { index as subscriptionPackagesIndex } from '@/routes/staff/commerce/subscription-packages';
 import { index as subscriptionsIndex } from '@/routes/staff/commerce/subscriptions';
 import { index as transactionsIndex } from '@/routes/staff/commerce/transactions';
@@ -159,6 +162,16 @@ const sections = computed((): NavSection[] => {
                     href: subscriptionPackagesIndex(),
                     icon: Package,
                 },
+                {
+                    title: 'Credit packages',
+                    href: creditPackagesIndex(),
+                    icon: Package,
+                },
+                {
+                    title: 'Bank details',
+                    href: bankDetailsEdit(),
+                    icon: CreditCard,
+                },
                 { title: 'Transactions', href: transactionsIndex(), icon: CreditCard },
                 { title: 'Subscriptions', href: subscriptionsIndex(), icon: Repeat },
             ],
@@ -171,6 +184,11 @@ const sections = computed((): NavSection[] => {
                     title: 'Service providers',
                     href: serviceProvidersIndex(),
                     icon: Store,
+                },
+                {
+                    title: 'Credit purchases',
+                    href: creditPurchasesIndex(),
+                    icon: CreditCard,
                 },
                 { title: 'Users', href: usersIndex(), icon: Users },
                 {

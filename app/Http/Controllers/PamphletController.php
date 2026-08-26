@@ -196,7 +196,7 @@ class PamphletController extends Controller
 
     public function print(MemorialPagePamphlet $pamphlet, QrCodeService $qrCodeService): Response
     {
-        abort_unless($pamphlet->isOwnedBy(request()->user()), 403);
+        abort_unless($pamphlet->canBeManagedBy(request()->user()), 403);
 
         $personOfInterest = $pamphlet->memorialPage?->personOfInterest;
         $targetUrl = route('memorial.public.show', $pamphlet->public_slug);

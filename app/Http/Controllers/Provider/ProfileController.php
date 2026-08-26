@@ -17,7 +17,7 @@ class ProfileController extends Controller
 
         return Inertia::render('provider/Profile', [
             'serviceProvider' => $serviceProvider->only([
-                'id', 'name', 'slug', 'status', 'registration_number', 'description',
+                'id', 'name', 'slug', 'status', 'registration_number', 'vat_number', 'description',
                 'logo_path', 'cover_image_path', 'email', 'phone', 'website_url',
                 'physical_address', 'city', 'province',
             ]),

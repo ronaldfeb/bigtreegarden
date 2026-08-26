@@ -90,6 +90,8 @@ test('members can upload a logo and cover image', function () {
         ->patch(route('provider.profile.update'), [
             'name' => $serviceProvider->name,
             'email' => $serviceProvider->email,
+            'phone' => $serviceProvider->phone ?? '0115550000',
+            'registration_number' => $serviceProvider->registration_number ?? '2020/123456/07',
             'logo' => UploadedFile::fake()->image('logo.png'),
             'cover_image' => UploadedFile::fake()->image('cover.jpg'),
         ])

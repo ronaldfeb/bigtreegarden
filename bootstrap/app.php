@@ -36,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'payments/*/notify',
             'payments/subscriptions/*/notify',
             'payments/flowers/*/notify',
+            'payments/provider-credits/*/notify',
         ]);
 
         $middleware->web(append: [

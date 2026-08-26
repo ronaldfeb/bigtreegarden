@@ -24,7 +24,7 @@ defineProps<{ serviceProvider: Record<string, unknown> }>();
             </CardHeader>
             <CardContent>
                 <Form
-                    v-bind="update.form(serviceProvider.id)"
+                    v-bind="update.form(String(serviceProvider.slug))"
                     class="space-y-6"
                     #default="{ errors, processing }"
                 >
@@ -104,7 +104,7 @@ defineProps<{ serviceProvider: Record<string, unknown> }>();
     <InputError :message="errors.status" />
 </div>
 
-                    <StaffFormActions :cancel-href="show(serviceProvider.id)" :processing="processing" />
+                    <StaffFormActions :cancel-href="show(String(serviceProvider.slug))" :processing="processing" />
                 </Form>
             </CardContent>
         </Card>

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ServiceProviderRole;
 use App\Models\ServiceProvider;
 use App\Models\ServiceProviderUser;
 use App\Models\User;
@@ -20,7 +21,14 @@ class ServiceProviderUserFactory extends Factory
         return [
             'service_provider_id' => ServiceProvider::factory(),
             'user_id' => User::factory(),
-            'role' => 'staff',
+            'role' => ServiceProviderRole::Staff,
         ];
+    }
+
+    public function owner(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'role' => ServiceProviderRole::Owner,
+        ]);
     }
 }

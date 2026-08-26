@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\MemorialPageMessage;
 use App\Models\MemorialPagePamphlet;
+use App\Models\ServiceProviderCreditPurchase;
 use App\Models\Subscription;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Http;
@@ -93,6 +94,40 @@ class PayfastService
             'm_payment_id' => $transaction->merchant_reference,
             'amount' => $amount,
             'item_name' => 'Memorial flowers message',
+        ];
+
+        $data['signature'] = $this->generateSignature($data, $this->passphrase());
+
+        return $data;
+    }
+
+    /**
+     * @return array<string, scalar|null>
+     */
+    public function buildProviderCreditCheckoutPayload(
+        ServiceProviderCreditPurchase $purchase,
+        Transaction $transaction,
+    ): array {
+        $user = $purchase->purchasedBy;
+        $amount = number_format($transaction->amount_cents / 100, 2, '.', '');
+        [$nameFirst, $nameLast] = $this->splitName($user?->name ?? '');
+
+        $data = [
+            'merchant_id' => config('services.payfast.merchant_id'),
+            'merchant_key' => config('services.payfast.merchant_key'),
+            'return_url' => route('provider.credits.return', $purchase),
+            'cancel_url' => route('provider.credits.cancel', $purchase),
+            'notify_url' => route('provider.credits.notify', $purchase),
+            'name_first' => $nameFirst,
+            'name_last' => $nameLast,
+            'email_address' => $user?->email,
+            'm_payment_id' => $transaction->merchant_reference,
+            'amount' => $amount,
+            'item_name' => sprintf(
+                '%s (%d memorial pages)',
+                $purchase->package_name,
+                $purchase->page_count,
+            ),
         ];
 
         $data['signature'] = $this->generateSignature($data, $this->passphrase());

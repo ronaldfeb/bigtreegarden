@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\ServiceProviderRole;
 use Database\Factories\ServiceProviderUserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 class ServiceProviderUser extends Pivot
 {
     /** @use HasFactory<ServiceProviderUserFactory> */
-    use HasFactory, HasUuids;
+    use HasFactory;
 
     public $incrementing = false;
 
@@ -36,6 +36,16 @@ class ServiceProviderUser extends Pivot
         return [];
     }
 
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'role' => ServiceProviderRole::class,
+        ];
+    }
+
     public function serviceProvider(): BelongsTo
     {
         return $this->belongsTo(ServiceProvider::class);
@@ -44,5 +54,10 @@ class ServiceProviderUser extends Pivot
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function isOwner(): bool
+    {
+        return $this->role === ServiceProviderRole::Owner;
     }
 }

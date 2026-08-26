@@ -19,6 +19,7 @@ class ServiceProviderFactory extends Factory
             'name' => fake()->company(),
             'slug' => fake()->unique()->slug(),
             'registration_number' => fake()->optional()->numerify('####/######/##'),
+            'vat_number' => null,
             'description' => fake()->optional()->paragraphs(2, true),
             'logo_path' => null,
             'cover_image_path' => null,
@@ -29,6 +30,7 @@ class ServiceProviderFactory extends Factory
             'city' => fake()->city(),
             'province' => fake()->state(),
             'status' => 'pending',
+            'credits_remaining' => 0,
         ];
     }
 
@@ -36,6 +38,13 @@ class ServiceProviderFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'status' => config('constants.service_provider.status.active'),
+        ]);
+    }
+
+    public function withCredits(int $credits = 10): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'credits_remaining' => $credits,
         ]);
     }
 }

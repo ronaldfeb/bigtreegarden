@@ -18,9 +18,10 @@ class UpdateProfileRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'registration_number' => ['nullable', 'string', 'max:255'],
+            'registration_number' => ['required', 'string', 'max:255'],
+            'vat_number' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
+            'phone' => ['required', 'string', 'max:50'],
             'website_url' => ['nullable', 'url', 'max:255'],
             'physical_address' => ['nullable', 'string'],
             'city' => ['nullable', 'string', 'max:255'],

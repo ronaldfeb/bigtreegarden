@@ -36,6 +36,11 @@ class User extends Authenticatable
         return $this->hasOne(StaffUser::class);
     }
 
+    public function serviceProviderMembership(): HasOne
+    {
+        return $this->hasOne(ServiceProviderUser::class);
+    }
+
     public function personsOfInterest(): BelongsToMany
     {
         return $this->belongsToMany(PersonOfInterest::class, 'user_persons_of_interest')

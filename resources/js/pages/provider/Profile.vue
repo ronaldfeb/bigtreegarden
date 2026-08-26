@@ -22,6 +22,7 @@ type Props = {
         slug: string;
         status: string;
         registration_number: string | null;
+        vat_number: string | null;
         description: string | null;
         logo_path: string | null;
         cover_image_path: string | null;
@@ -75,8 +76,20 @@ defineProps<Props>();
                             name="registration_number"
                             type="text"
                             :default-value="serviceProvider.registration_number"
+                            required
                         />
                         <InputError :message="errors.registration_number" />
+                    </div>
+
+                    <div class="grid gap-2">
+                        <Label for="vat_number">VAT number (optional)</Label>
+                        <Input
+                            id="vat_number"
+                            name="vat_number"
+                            type="text"
+                            :default-value="serviceProvider.vat_number"
+                        />
+                        <InputError :message="errors.vat_number" />
                     </div>
 
                     <div class="grid gap-2">
@@ -141,6 +154,7 @@ defineProps<Props>();
                                 name="phone"
                                 type="text"
                                 :default-value="serviceProvider.phone"
+                                required
                             />
                             <InputError :message="errors.phone" />
                         </div>

@@ -1,14 +1,37 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import StaffPageHeader from '@/components/staff/StaffPageHeader.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import StaffLayout from '@/layouts/staff/StaffLayout.vue';
-import { index, show } from '@/routes/staff/commerce/transactions';
+import { formatCentsAsRand } from '@/lib/utils';
+import { index } from '@/routes/staff/commerce/transactions';
 
 const props = defineProps<{
-    transaction: Record<string, any>
+    transaction: Record<string, any>;
 }>();
+
+const moneyKeys = new Set(['price_cents', 'amount_cents']);
+
+function fieldLabel(key: string): string {
+    if (key === 'price_cents') {
+        return 'price';
+    }
+
+    if (key === 'amount_cents') {
+        return 'amount';
+    }
+
+    return key;
+}
+
+function fieldValue(key: string, value: unknown): string {
+    if (moneyKeys.has(key)) {
+        return formatCentsAsRand(value as number, String(props.transaction.currency ?? 'ZAR'));
+    }
+
+    return String(value);
+}
 </script>
 
 <template>
@@ -17,9 +40,7 @@ const props = defineProps<{
 
         <StaffPageHeader
             :title="String(props.transaction.title ?? props.transaction.name ?? props.transaction.client_name ?? 'Transaction')"
-            
         />
-        
 
         <Card>
             <CardHeader><CardTitle>Details</CardTitle></CardHeader>
@@ -30,22 +51,18 @@ const props = defineProps<{
                             v-if="value !== null && typeof value !== 'object'"
                             class="rounded-lg border border-border p-3"
                         >
-                            <dt class="text-muted-foreground text-xs uppercase">{{ key }}</dt>
-                            <dd class="mt-1 text-sm break-words">{{ value }}</dd>
+                            <dt class="text-muted-foreground text-xs uppercase">{{ fieldLabel(String(key)) }}</dt>
+                            <dd class="mt-1 break-words text-sm">{{ fieldValue(String(key), value) }}</dd>
                         </div>
                     </template>
                 </dl>
             </CardContent>
         </Card>
-        
 
         <div class="flex flex-wrap gap-2">
             <Button variant="outline" as-child>
                 <Link :href="index()">Back to list</Link>
             </Button>
-            <Form v-if="!true" v-bind="destroy.form(props.transaction.id)">
-                <Button type="submit" variant="destructive">Delete</Button>
-            </Form>
         </div>
     </StaffLayout>
 </template>

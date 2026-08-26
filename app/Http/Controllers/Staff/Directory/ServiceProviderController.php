@@ -46,7 +46,60 @@ class ServiceProviderController extends Controller
     {
         Gate::authorize('manage-directory');
 
-        return Inertia::render('staff/directory/service-providers/Show', ['serviceProvider' => $serviceProvider]);
+        $serviceProvider->load([
+            'memberships.user:id,name,email',
+            'creditPurchases' => fn ($query) => $query->latest()->limit(20),
+            'personsOfInterest' => fn ($query) => $query->latest()->limit(20),
+        ]);
+
+        return Inertia::render('staff/directory/service-providers/Show', [
+            'serviceProvider' => [
+                'id' => $serviceProvider->id,
+                'name' => $serviceProvider->name,
+                'slug' => $serviceProvider->slug,
+                'status' => $serviceProvider->status,
+                'registration_number' => $serviceProvider->registration_number,
+                'vat_number' => $serviceProvider->vat_number,
+                'email' => $serviceProvider->email,
+                'phone' => $serviceProvider->phone,
+                'city' => $serviceProvider->city,
+                'province' => $serviceProvider->province,
+                'credits_remaining' => $serviceProvider->credits_remaining,
+                'description' => $serviceProvider->description,
+                'physical_address' => $serviceProvider->physical_address,
+                'website_url' => $serviceProvider->website_url,
+                'created_at' => $serviceProvider->created_at?->toIso8601String(),
+            ],
+            'members' => $serviceProvider->memberships->map(fn ($membership): array => [
+                'user_id' => $membership->user_id,
+                'name' => $membership->user?->name,
+                'email' => $membership->user?->email,
+                'role' => $membership->role instanceof \BackedEnum
+                    ? $membership->role->value
+                    : $membership->role,
+            ])->values()->all(),
+            'purchases' => $serviceProvider->creditPurchases->map(fn ($purchase): array => [
+                'id' => $purchase->id,
+                'package_name' => $purchase->package_name,
+                'page_count' => $purchase->page_count,
+                'price_cents' => $purchase->price_cents,
+                'payment_method' => $purchase->payment_method instanceof \BackedEnum
+                    ? $purchase->payment_method->value
+                    : $purchase->payment_method,
+                'status' => $purchase->status instanceof \BackedEnum
+                    ? $purchase->status->value
+                    : $purchase->status,
+                'payment_reference' => $purchase->payment_reference,
+            ])->values()->all(),
+            'memorials' => $serviceProvider->personsOfInterest->map(fn ($poi): array => [
+                'id' => $poi->id,
+                'display_name' => $poi->display_name,
+                'public_slug' => $poi->public_slug,
+                'status' => $poi->status instanceof \BackedEnum
+                    ? $poi->status->value
+                    : $poi->status,
+            ])->values()->all(),
+        ]);
     }
 
     public function edit(ServiceProvider $serviceProvider): Response
