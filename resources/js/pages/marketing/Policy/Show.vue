@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+import RichTextContent from '@/components/RichTextContent.vue';
 import MarketingLayout from '@/layouts/marketing/MarketingLayout.vue';
 
 defineProps<{
@@ -44,10 +45,7 @@ function formatDate(iso: string | null): string {
                 </div>
             </header>
 
-            <div
-                class="prose prose-neutral mt-8 max-w-none dark:prose-invert"
-                v-html="policy.body"
-            />
+            <RichTextContent :content="policy.body" class="mt-8" />
         </article>
     </MarketingLayout>
 </template>

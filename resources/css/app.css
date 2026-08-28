@@ -318,6 +318,82 @@
         max-width: 45rem;
     }
 
+    .rich-text {
+        font-family: var(--font-serif);
+        font-size: 1.0625rem;
+        line-height: 1.65;
+        max-width: none;
+    }
+
+    .rich-text > :first-child {
+        margin-top: 0;
+    }
+
+    .rich-text > :last-child {
+        margin-bottom: 0;
+    }
+
+    .rich-text :where(p) {
+        margin-top: 1em;
+        margin-bottom: 1em;
+    }
+
+    .rich-text :where(h2) {
+        margin-top: 2em;
+        margin-bottom: 0.75em;
+        font-family: var(--font-display);
+        font-size: 1.625rem;
+        font-weight: 500;
+        line-height: 1.2;
+    }
+
+    .rich-text :where(h3) {
+        margin-top: 1.5em;
+        margin-bottom: 0.5em;
+        font-family: var(--font-display);
+        font-size: 1.25rem;
+        font-weight: 500;
+        line-height: 1.25;
+    }
+
+    .rich-text :where(ul, ol) {
+        margin-top: 1em;
+        margin-bottom: 1em;
+        padding-left: 1.5em;
+    }
+
+    .rich-text :where(ul) {
+        list-style-type: disc;
+    }
+
+    .rich-text :where(ol) {
+        list-style-type: decimal;
+    }
+
+    .rich-text :where(li) {
+        margin-top: 0.25em;
+        margin-bottom: 0.25em;
+    }
+
+    .rich-text :where(a) {
+        color: var(--brand);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
+    .rich-text :where(strong) {
+        font-weight: 600;
+    }
+
+    .rich-text :where(blockquote) {
+        margin-top: 1.5em;
+        margin-bottom: 1.5em;
+        border-left: 3px solid var(--border);
+        padding-left: 1em;
+        color: var(--muted-foreground);
+        font-style: italic;
+    }
+
     .memorial-hero {
         background-color: var(--memorial);
         color: var(--bone);

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { Head, Form } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
+import RichTextEditor from '@/components/RichTextEditor.vue';
 import StaffFormActions from '@/components/staff/StaffFormActions.vue';
 import StaffPageHeader from '@/components/staff/StaffPageHeader.vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import StaffLayout from '@/layouts/staff/StaffLayout.vue';
 import { index, store } from '@/routes/staff/content/policies';
 </script>
@@ -45,7 +45,7 @@ import { index, store } from '@/routes/staff/content/policies';
 
                 <div class="grid gap-2">
     <Label for="body">Body</Label>
-    <Textarea id="body" name="body" rows="8"  required />
+    <RichTextEditor id="body" name="body" />
     <InputError :message="errors.body" />
 </div>
 

@@ -36,6 +36,9 @@
     },
     "dependencies": {
         "@inertiajs/vue3": "^2.3.7",
+        "@tiptap/pm": "^3.30.5",
+        "@tiptap/starter-kit": "^3.30.5",
+        "@tiptap/vue-3": "^3.30.5",
         "@vueuse/core": "^12.8.2",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
