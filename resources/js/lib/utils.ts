@@ -47,3 +47,29 @@ export function randInputToCents(rand: string | number): number {
     return Math.round(amount * 100);
 }
 
+export function toDatetimeLocalInput(value: string | Date | null | undefined): string {
+    if (!value) {
+        return '';
+    }
+
+    const date = value instanceof Date ? value : new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+
+    const pad = (part: number): string => String(part).padStart(2, '0');
+
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+const policyTypeLabels: Record<string, string> = {
+    terms_of_service: 'Terms of service',
+    privacy_policy: 'Privacy policy',
+    about_us: 'About us',
+};
+
+export function policyTypeLabel(type: string): string {
+    return policyTypeLabels[type] ?? type.replaceAll('_', ' ');
+}
+
