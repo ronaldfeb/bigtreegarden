@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import { home, pricing } from '@/routes';
+import { home, pricing, register } from '@/routes';
 import blog from '@/routes/blog';
 import help from '@/routes/help';
-import { create } from '@/routes/pamphlets';
 import partners from '@/routes/partners';
 import policies from '@/routes/policies';
 import providers from '@/routes/providers';
@@ -18,7 +17,7 @@ const columns = [
         heading: 'Platform',
         links: [
             { label: 'Home', href: home() },
-            { label: 'Create a memorial', href: create() },
+            { label: 'Create a memorial', href: register() },
             { label: 'Pricing', href: pricing() },
             { label: 'Service providers', href: providers.index() },
         ],
