@@ -55,6 +55,8 @@ class SubscriptionPackageController extends Controller
     {
         Gate::authorize('manage-commerce');
 
+        $subscriptionPackage->load('features');
+
         return Inertia::render('staff/commerce/subscription-packages/Edit', ['package' => $subscriptionPackage]);
     }
 
@@ -63,11 +65,19 @@ class SubscriptionPackageController extends Controller
         Gate::authorize('manage-commerce');
 
         $validated = $request->validated();
+        $syncFeatures = $request->boolean('sync_features');
+        $features = $validated['features'] ?? [];
+        unset($validated['features'], $validated['sync_features']);
+
         if (isset($validated['name']) && $validated['name'] !== $subscriptionPackage->name) {
             $validated['slug'] = $this->uniqueSlug($validated['name'], SubscriptionPackage::class, $subscriptionPackage->id);
         }
 
         $subscriptionPackage->update($validated);
+
+        if ($syncFeatures) {
+            $subscriptionPackage->syncFeatures($features);
+        }
 
         return redirect()->route('staff.commerce.subscription-packages.show', $subscriptionPackage);
     }

@@ -46,6 +46,46 @@ class SubscriptionPackage extends Model
     }
 
     /**
+     * Replace package features with the given rows, preserving existing ids when provided.
+     *
+     * @param  list<array{id?: string|null, label: string, description?: string|null, is_included?: mixed}>  $features
+     */
+    public function syncFeatures(array $features): void
+    {
+        $keepIds = [];
+
+        foreach (array_values($features) as $index => $feature) {
+            $payload = [
+                'label' => $feature['label'],
+                'description' => $feature['description'] ?? null,
+                'is_included' => (bool) ($feature['is_included'] ?? true),
+                'sort_order' => $index,
+            ];
+
+            $id = $feature['id'] ?? null;
+
+            if (is_string($id) && $id !== '') {
+                $existing = $this->features()->whereKey($id)->first();
+
+                if ($existing !== null) {
+                    $existing->update($payload);
+                    $keepIds[] = $existing->id;
+
+                    continue;
+                }
+            }
+
+            $keepIds[] = $this->features()->create($payload)->id;
+        }
+
+        $obsolete = $keepIds === []
+            ? $this->features()->get()
+            : $this->features()->whereNotIn('id', $keepIds)->get();
+
+        $obsolete->each->delete();
+    }
+
+    /**
      * @param  Builder<SubscriptionPackage>  $query
      * @return Builder<SubscriptionPackage>
      */

@@ -60,6 +60,28 @@ function fieldValue(key: string, value: unknown): string {
             </CardContent>
         </Card>
 
+        <Card v-if="Array.isArray(props.package.features)">
+            <CardHeader><CardTitle>Features</CardTitle></CardHeader>
+            <CardContent>
+                <p v-if="props.package.features.length === 0" class="text-muted-foreground text-sm">
+                    No features listed for this package.
+                </p>
+                <ul v-else class="space-y-2" role="list">
+                    <li
+                        v-for="feature in props.package.features"
+                        :key="feature.id"
+                        class="rounded-lg border border-border p-3"
+                    >
+                        <p class="font-medium text-sm">{{ feature.label }}</p>
+                        <p v-if="feature.description" class="mt-1 text-muted-foreground text-sm">{{ feature.description }}</p>
+                        <p class="mt-1 text-muted-foreground text-xs">
+                            {{ feature.is_included ? 'Included' : 'Not included' }}
+                        </p>
+                    </li>
+                </ul>
+            </CardContent>
+        </Card>
+
         <div class="flex flex-wrap gap-2">
             <Button variant="outline" as-child>
                 <Link :href="index()">Back to list</Link>

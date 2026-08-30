@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { Plus, Trash2 } from 'lucide-vue-next';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import StaffFormActions from '@/components/staff/StaffFormActions.vue';
 import StaffPageHeader from '@/components/staff/StaffPageHeader.vue';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,9 +14,63 @@ import StaffLayout from '@/layouts/staff/StaffLayout.vue';
 import { centsToRandInput, randInputToCents } from '@/lib/utils';
 import { show, update } from '@/routes/staff/commerce/subscription-packages';
 
-const props = defineProps<{ package: Record<string, unknown> }>();
+type PackageFeature = {
+    id?: string;
+    label: string;
+    description: string | null;
+    is_included: boolean;
+    sort_order: number;
+};
 
-const priceRand = ref(centsToRandInput(props.package.price_cents as number));
+type SubscriptionPackageRecord = {
+    id: string;
+    name: string;
+    description: string | null;
+    price_cents: number;
+    currency: string;
+    billing_interval: string;
+    is_featured: boolean;
+    is_active: boolean;
+    sort_order: number;
+    features: PackageFeature[];
+};
+
+type FeatureRow = {
+    key: string;
+    id?: string;
+    label: string;
+    description: string;
+    is_included: boolean;
+};
+
+const props = defineProps<{
+    package: SubscriptionPackageRecord;
+}>();
+
+const priceRand = ref(centsToRandInput(props.package.price_cents));
+
+const features = ref<FeatureRow[]>(
+    props.package.features.map((feature) => ({
+        key: feature.id ?? crypto.randomUUID(),
+        id: feature.id,
+        label: feature.label,
+        description: feature.description ?? '',
+        is_included: feature.is_included,
+    })),
+);
+
+const addFeature = (): void => {
+    features.value.push({
+        key: crypto.randomUUID(),
+        label: '',
+        description: '',
+        is_included: true,
+    });
+};
+
+const removeFeature = (index: number): void => {
+    features.value.splice(index, 1);
+};
 </script>
 
 <template>
@@ -23,16 +79,18 @@ const priceRand = ref(centsToRandInput(props.package.price_cents as number));
 
         <StaffPageHeader title="Edit subscription package" />
 
-        <Card>
-            <CardHeader>
-                <CardTitle>Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <Form
-                    v-bind="update.form(package.id)"
-                    class="space-y-6"
-                    #default="{ errors, processing }"
-                >
+        <Form
+            v-bind="update.form(package.id)"
+            class="space-y-6"
+            #default="{ errors, processing }"
+        >
+            <input type="hidden" name="sync_features" value="1" />
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Details</CardTitle>
+                </CardHeader>
+                <CardContent class="space-y-6">
                     <div class="grid gap-2">
                         <Label for="name">Name</Label>
                         <Input id="name" name="name" type="text" :default-value="package.name" required />
@@ -94,10 +152,77 @@ const priceRand = ref(centsToRandInput(props.package.price_cents as number));
                         <Input id="sort_order" name="sort_order" type="number" :default-value="package.sort_order" />
                         <InputError :message="errors.sort_order" />
                     </div>
+                </CardContent>
+            </Card>
 
-                    <StaffFormActions :cancel-href="show(package.id)" :processing="processing" />
-                </Form>
-            </CardContent>
-        </Card>
+            <Card>
+                <CardHeader class="flex flex-row items-center justify-between gap-4 space-y-0">
+                    <CardTitle>Features</CardTitle>
+                    <Button type="button" variant="outline" size="sm" @click="addFeature">
+                        <Plus class="size-4" />
+                        Add feature
+                    </Button>
+                </CardHeader>
+                <CardContent class="space-y-4">
+                    <p v-if="features.length === 0" class="text-muted-foreground text-sm">
+                        No features yet. Add the benefits shown on the pricing page.
+                    </p>
+
+                    <div
+                        v-for="(feature, index) in features"
+                        :key="feature.key"
+                        class="space-y-4 rounded-lg border border-border p-4"
+                    >
+                        <input v-if="feature.id" type="hidden" :name="`features[${index}][id]`" :value="feature.id" />
+
+                        <div class="flex items-start justify-between gap-3">
+                            <p class="font-medium text-sm">Feature {{ index + 1 }}</p>
+                            <Button type="button" variant="ghost" size="icon" :aria-label="`Remove feature ${index + 1}`" @click="removeFeature(index)">
+                                <Trash2 class="size-4" />
+                            </Button>
+                        </div>
+
+                        <div class="grid gap-2">
+                            <Label :for="`feature-label-${index}`">Label</Label>
+                            <Input
+                                :id="`feature-label-${index}`"
+                                v-model="feature.label"
+                                :name="`features[${index}][label]`"
+                                type="text"
+                                required
+                            />
+                            <InputError :message="errors[`features.${index}.label`]" />
+                        </div>
+
+                        <div class="grid gap-2">
+                            <Label :for="`feature-description-${index}`">Description</Label>
+                            <Input
+                                :id="`feature-description-${index}`"
+                                v-model="feature.description"
+                                :name="`features[${index}][description]`"
+                                type="text"
+                            />
+                            <InputError :message="errors[`features.${index}.description`]" />
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <input type="hidden" :name="`features[${index}][is_included]`" value="0" />
+                            <input
+                                :id="`feature-included-${index}`"
+                                :name="`features[${index}][is_included]`"
+                                type="checkbox"
+                                value="1"
+                                class="size-4 rounded border-input"
+                                :checked="feature.is_included"
+                            />
+                            <Label :for="`feature-included-${index}`">Included in this package</Label>
+                            <InputError :message="errors[`features.${index}.is_included`]" />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <StaffFormActions :cancel-href="show(package.id)" :processing="processing" />
+        </Form>
     </StaffLayout>
 </template>
