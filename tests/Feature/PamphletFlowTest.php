@@ -10,12 +10,26 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\GuestPamphletDraftService;
 use App\Services\PayfastService;
+use App\Support\PamphletLayout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
+
+it('stores the once-off package from the create query string', function () {
+    SubscriptionPackage::factory()->create([
+        'slug' => 'memorial-legacy',
+        'billing_interval' => 'once_off',
+        'is_active' => true,
+    ]);
+
+    $this->get(route('pamphlets.create', ['package' => 'memorial-legacy']))
+        ->assertOk();
+
+    expect(session('memorial_package_slug'))->toBe('memorial-legacy');
+});
 
 it('allows guests to create a draft and view preview before auth', function () {
     Storage::fake(config('filesystems.media'));
@@ -53,9 +67,129 @@ it('allows guests to create a draft and view preview before auth', function () {
     expect($pamphlet->style?->name_color)->toBe('#F5F5F5');
     expect($pamphlet->style?->short_text_color)->toBe('#EEEEEE');
     expect($pamphlet->style?->dates_color)->toBe('#111111');
+    expect(PamphletLayout::normalize($pamphlet->style?->layout))->toEqual(PamphletLayout::defaults());
 
     $response->assertRedirect(route('pamphlets.show', $pamphlet));
     $response->assertCookie('guest_pamphlet_token');
+});
+
+it('persists a custom pamphlet layout on create and update', function () {
+    Storage::fake(config('filesystems.media'));
+    config()->set('memorial.bypass_payment_for_publish', false);
+
+    $user = User::factory()->create();
+    $collection = MemorialPagePamphletBackgroundCollection::factory()->create(['slug' => 'adults']);
+    $background = MemorialPagePamphletBackground::factory()->create([
+        'collection_id' => $collection->id,
+    ]);
+
+    $layout = PamphletLayout::defaults();
+    $layout['heading']['x'] = 12.5;
+    $layout['heading']['fontSize'] = 8.5;
+    $layout['photo']['w'] = 36;
+
+    $this->actingAs($user)->post('/pamphlets', [
+        'heading' => 'Layout Save',
+        'person_full_name' => 'Layout Person',
+        'date_of_birth' => '1970-01-01',
+        'date_of_passing' => '2024-01-01',
+        'date_format' => 'd M Y',
+        'image_shape' => 'square',
+        'image_crop_mode' => 'cover',
+        'short_text' => 'Custom layout tribute.',
+        'background_id' => $background->id,
+        'heading_color' => '#FFFFFF',
+        'name_color' => '#FFFFFF',
+        'short_text_color' => '#FFFFFF',
+        'dates_color' => '#000000',
+        'layout' => json_encode($layout),
+        'image' => UploadedFile::fake()->image('memorial.jpg'),
+    ]);
+
+    $pamphlet = MemorialPagePamphlet::query()->first();
+
+    expect($pamphlet)->not->toBeNull();
+    expect((float) $pamphlet->style?->layout['heading']['x'])->toBe(12.5);
+    expect((float) $pamphlet->style?->layout['heading']['fontSize'])->toBe(8.5);
+    expect((float) $pamphlet->style?->layout['photo']['w'])->toBe(36.0);
+
+    $updatedLayout = $pamphlet->style->layout;
+    $updatedLayout['tribute']['y'] = 72.25;
+
+    $this->actingAs($user)->put(route('pamphlets.update', $pamphlet), [
+        'heading' => 'Layout Save',
+        'person_full_name' => 'Layout Person',
+        'date_of_birth' => '1970-01-01',
+        'date_of_passing' => '2024-01-01',
+        'date_format' => 'd M Y',
+        'image_shape' => 'square',
+        'image_crop_mode' => 'cover',
+        'short_text' => 'Custom layout tribute.',
+        'background_id' => $background->id,
+        'heading_color' => '#FFFFFF',
+        'name_color' => '#FFFFFF',
+        'short_text_color' => '#FFFFFF',
+        'dates_color' => '#000000',
+        'layout' => json_encode($updatedLayout),
+    ])->assertRedirect(route('pamphlets.show', $pamphlet));
+
+    $pamphlet->refresh()->load('style');
+
+    expect((float) $pamphlet->style?->layout['tribute']['y'])->toBe(72.25);
+});
+
+it('rejects invalid pamphlet layouts', function () {
+    Storage::fake(config('filesystems.media'));
+
+    $collection = MemorialPagePamphletBackgroundCollection::factory()->create(['slug' => 'adults']);
+    $background = MemorialPagePamphletBackground::factory()->create([
+        'collection_id' => $collection->id,
+    ]);
+
+    $response = $this->from(route('pamphlets.create'))->post('/pamphlets', [
+        'heading' => 'Bad Layout',
+        'person_full_name' => 'John Doe',
+        'date_of_birth' => '1970-01-01',
+        'date_of_passing' => '2024-01-01',
+        'date_format' => 'd M Y',
+        'image_shape' => 'square',
+        'image_crop_mode' => 'cover',
+        'short_text' => 'Beloved father and friend.',
+        'background_id' => $background->id,
+        'heading_color' => '#FFFFFF',
+        'name_color' => '#FFFFFF',
+        'short_text_color' => '#FFFFFF',
+        'dates_color' => '#000000',
+        'layout' => json_encode(['heading' => ['x' => 250, 'y' => 5, 'w' => 84, 'fontSize' => 7]]),
+        'image' => UploadedFile::fake()->image('memorial.jpg'),
+    ]);
+
+    $response->assertRedirect(route('pamphlets.create'));
+    $response->assertSessionHasErrors(['layout']);
+    expect(MemorialPagePamphlet::query()->count())->toBe(0);
+});
+
+it('includes layout defaults on the edit and review payloads', function () {
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::Draft,
+    ]);
+
+    $this->actingAs($pamphlet->owner())
+        ->get(route('pamphlets.edit', $pamphlet))
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->component('pamphlets/CreatePamphlet')
+            ->where('pamphlet.layout.heading.x', fn ($value) => (float) $value === (float) PamphletLayout::defaults()['heading']['x'])
+            ->has('pamphlet.layout.photo')
+        );
+
+    $this->actingAs($pamphlet->owner())
+        ->get(route('pamphlets.show', $pamphlet))
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->component('pamphlets/Show')
+            ->where('pamphlet.layout.heading.fontSize', fn ($value) => (float) $value === (float) PamphletLayout::defaults()['heading']['fontSize'])
+        );
 });
 
 it('rejects invalid pamphlet text colors', function () {
@@ -132,7 +266,7 @@ it('redirects guests to login at checkout checkpoint', function () {
 
 it('claims guest draft to authenticated user at checkpoint and proceeds to checkout', function () {
     SubscriptionPackage::factory()->create([
-        'slug' => 'memorial-page',
+        'slug' => 'funeral-memorial',
         'billing_interval' => 'once_off',
         'price_cents' => 69900,
         'currency' => 'ZAR',
@@ -161,7 +295,7 @@ it('claims guest draft to authenticated user at checkpoint and proceeds to check
 
 it('lets authenticated users continue directly to checkout without auth gate', function () {
     SubscriptionPackage::factory()->create([
-        'slug' => 'memorial-page',
+        'slug' => 'funeral-memorial',
         'billing_interval' => 'once_off',
         'price_cents' => 69900,
         'currency' => 'ZAR',
@@ -189,7 +323,7 @@ it('prevents guests without token from viewing another draft', function () {
 
 it('creates an initiated transaction record on checkout', function () {
     SubscriptionPackage::factory()->create([
-        'slug' => 'memorial-page',
+        'slug' => 'funeral-memorial',
         'billing_interval' => 'once_off',
         'price_cents' => 69900,
         'currency' => 'ZAR',
@@ -437,7 +571,7 @@ it('includes style colors and pricing on the pamphlet review page', function () 
     Storage::disk(config('filesystems.media'))->put($imagePath, 'fake-image');
 
     SubscriptionPackage::factory()->create([
-        'slug' => 'memorial-page',
+        'slug' => 'funeral-memorial',
         'name' => 'Memorial Page',
         'billing_interval' => 'once_off',
         'price_cents' => 69900,
@@ -582,7 +716,7 @@ it('allows a guest draft owner to edit with their cookie', function () {
 
 it('passes amount, currency, and pamphlet preview to the checkout page', function () {
     SubscriptionPackage::factory()->create([
-        'slug' => 'memorial-page',
+        'slug' => 'funeral-memorial',
         'billing_interval' => 'once_off',
         'price_cents' => 69900,
         'currency' => 'ZAR',
@@ -604,5 +738,6 @@ it('passes amount, currency, and pamphlet preview to the checkout page', functio
         ->where('autoSubmit', true)
         ->where('pamphlet.heading', 'Checkout Preview Heading')
         ->has('pricing')
+        ->has('pamphlet.layout.heading')
     );
 });

@@ -12,6 +12,7 @@ use App\Services\GuestPamphletDraftService;
 use App\Services\PamphletPaymentFulfillmentService;
 use App\Services\PayfastService;
 use App\Support\MediaStorage;
+use App\Support\PamphletLayout;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -175,7 +176,7 @@ class PaymentController extends Controller
      */
     private function buildPayfastCheckout(MemorialPagePamphlet $pamphlet, PayfastService $payfastService): array
     {
-        $package = SubscriptionPackage::memorialPagePackage();
+        $package = SubscriptionPackage::selectedOnceOffPackage();
 
         abort_if($package === null, 503, 'Memorial page pricing is not configured.');
 
@@ -236,6 +237,7 @@ class PaymentController extends Controller
             'name_color' => $pamphlet->style?->name_color ?? '#000000',
             'short_text_color' => $pamphlet->style?->short_text_color ?? '#000000',
             'dates_color' => $pamphlet->style?->dates_color ?? '#000000',
+            'layout' => PamphletLayout::normalize($pamphlet->style?->layout),
             'pamphlet_qr_code' => $pamphlet->memorialPage?->personOfInterest ? [
                 'target_url' => route('memorial.public.show', $pamphlet->public_slug),
                 'image_path' => $pamphlet->memorialPage->personOfInterest->qr_code_path,
@@ -248,17 +250,12 @@ class PaymentController extends Controller
      */
     private function memorialPricingPayload(): ?array
     {
-        $package = SubscriptionPackage::memorialPagePackage();
+        $package = SubscriptionPackage::selectedOnceOffPackage();
 
         if ($package === null) {
             return null;
         }
 
-        return [
-            'name' => $package->name,
-            'price_cents' => $package->price_cents,
-            'currency' => $package->currency,
-            'billing_interval' => $package->billing_interval,
-        ];
+        return $package->pricingPayload();
     }
 }

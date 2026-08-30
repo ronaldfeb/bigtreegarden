@@ -57,6 +57,23 @@ function subscriptionItnPayload(Transaction $transaction, array $overrides = [])
     ], $overrides);
 }
 
+it('starts living legacy checkout from the dedicated start route', function () {
+    $user = User::factory()->create();
+    $package = SubscriptionPackage::factory()->create([
+        'slug' => 'living-legacy',
+        'billing_interval' => 'monthly',
+        'is_active' => true,
+    ]);
+
+    $response = $this->actingAs($user)->get(route('subscriptions.start'));
+
+    $subscription = Subscription::query()->where('user_id', $user->id)->first();
+
+    expect($subscription)->not->toBeNull();
+    expect($subscription->subscription_package_id)->toBe($package->id);
+    $response->assertRedirect(route('subscriptions.checkout', $subscription));
+});
+
 it('starts a subscription checkout from a recurring package', function () {
     $user = User::factory()->create();
     $package = SubscriptionPackage::factory()->create(['billing_interval' => 'monthly']);

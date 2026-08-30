@@ -18,7 +18,7 @@ beforeEach(function () {
     config()->set('services.payfast.url', 'https://sandbox.payfast.co.za/eng/process');
 
     SubscriptionPackage::factory()->create([
-        'slug' => 'memorial-page',
+        'slug' => 'funeral-memorial',
         'billing_interval' => 'once_off',
         'price_cents' => 69900,
         'currency' => 'ZAR',
@@ -95,6 +95,30 @@ it('includes a valid signature in the checkout payload', function () {
     expect($payload['signature'])->toBe($expectedSignature);
 });
 
+it('prices pamphlet checkout from the memorial-legacy package when selected in session', function () {
+    SubscriptionPackage::factory()->create([
+        'slug' => 'memorial-legacy',
+        'billing_interval' => 'once_off',
+        'price_cents' => 149900,
+        'currency' => 'ZAR',
+        'is_active' => true,
+    ]);
+
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
+    ]);
+
+    $this->actingAs($pamphlet->owner())
+        ->withSession(['memorial_package_slug' => 'memorial-legacy'])
+        ->get(route('payments.checkout', $pamphlet))
+        ->assertSuccessful();
+
+    $transaction = Transaction::query()->first();
+
+    expect($transaction)->not->toBeNull();
+    expect($transaction->amount_cents)->toBe(149900);
+});
+
 it('reuses an initiated transaction on repeated checkout visits', function () {
     $pamphlet = MemorialPagePamphlet::factory()->create([
         'status' => PamphletStatus::PendingPayment,
@@ -106,8 +130,8 @@ it('reuses an initiated transaction on repeated checkout visits', function () {
     expect(Transaction::query()->count())->toBe(1);
 });
 
-it('prices pamphlet checkout from the memorial-page subscription package', function () {
-    SubscriptionPackage::query()->where('slug', 'memorial-page')->update([
+it('prices pamphlet checkout from the funeral-memorial subscription package', function () {
+    SubscriptionPackage::query()->where('slug', 'funeral-memorial')->update([
         'price_cents' => 45500,
         'currency' => 'ZAR',
     ]);
@@ -139,7 +163,7 @@ it('updates an initiated transaction when package pricing changes', function () 
         'currency' => 'ZAR',
     ]);
 
-    SubscriptionPackage::query()->where('slug', 'memorial-page')->update([
+    SubscriptionPackage::query()->where('slug', 'funeral-memorial')->update([
         'price_cents' => 77700,
     ]);
 

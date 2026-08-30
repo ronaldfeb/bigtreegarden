@@ -53,19 +53,19 @@ const billingLabels: Record<string, string> = {
 const page = usePage();
 const isAuthenticated = computed(() => Boolean((page.props.auth as { user: unknown } | undefined)?.user));
 
-function isMemorialPlan(pkg: Pick<PricingPackage, 'billing_interval'>): boolean {
+function isOnceOffPlan(pkg: Pick<PricingPackage, 'billing_interval'>): boolean {
     return pkg.billing_interval === 'once_off';
 }
 
-function choosePlan(pkg: Pick<PricingPackage, 'id' | 'billing_interval'>): void {
-    if (isMemorialPlan(pkg)) {
-        router.get(create().url);
+function choosePlan(pkg: Pick<PricingPackage, 'id' | 'slug' | 'billing_interval'>): void {
+    if (isOnceOffPlan(pkg)) {
+        router.get(create({ query: { package: pkg.slug } }).url);
 
         return;
     }
 
     if (!isAuthenticated.value) {
-        router.get(register({ query: { intent: 'vault' } }).url);
+        router.get(register({ query: { intent: 'living-legacy' } }).url);
 
         return;
     }
@@ -143,12 +143,12 @@ function formatPrice(cents: number, currency: string): string {
 
                     <CardFooter>
                         <Button
-                            v-if="isMemorialPlan(pkg)"
+                            v-if="isOnceOffPlan(pkg)"
                             as-child
                             class="w-full"
                             :variant="pkg.is_featured ? 'default' : 'outline'"
                         >
-                            <Link :href="create()">Get started</Link>
+                            <Link :href="create({ query: { package: pkg.slug } })">Get started</Link>
                         </Button>
                         <Button
                             v-else

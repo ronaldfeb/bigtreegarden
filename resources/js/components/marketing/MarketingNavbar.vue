@@ -5,10 +5,9 @@ import { computed, ref } from 'vue';
 import MarketingAuthLinks from '@/components/marketing/MarketingAuthLinks.vue';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { home, pricing } from '@/routes';
+import { home, pricing, register } from '@/routes';
 import blog from '@/routes/blog';
 import help from '@/routes/help';
-import { create } from '@/routes/pamphlets';
 import providers from '@/routes/providers';
 
 withDefaults(
@@ -57,10 +56,10 @@ const isActive = (href: { url: string }) => page.url.startsWith(href.url);
             <div class="flex shrink-0 items-center gap-2 sm:gap-3 md:gap-4">
                 <MarketingAuthLinks :can-register="canRegister" />
                 <Button as-child size="sm" class="hidden sm:inline-flex">
-                    <Link :href="create()">Create memorial</Link>
+                    <Link :href="register()">Create memorial</Link>
                 </Button>
                 <Button as-child size="sm" class="sm:hidden">
-                    <Link :href="create()">Create memorial</Link>
+                    <Link :href="register()">Create memorial</Link>
                 </Button>
 
                 <Sheet v-model:open="mobileMenuOpen">

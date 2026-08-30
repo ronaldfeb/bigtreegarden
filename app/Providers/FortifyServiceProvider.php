@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Enums\RegistrationIntent;
 use App\Http\Responses\RegisterResponse;
+use App\Models\SubscriptionPackage;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -69,10 +71,11 @@ class FortifyServiceProvider extends ServiceProvider
         ]));
 
         Fortify::registerView(function (Request $request) {
-            $intent = $request->query('intent');
+            $intent = RegistrationIntent::tryFromInput($request->query('intent'));
 
             return Inertia::render('auth/Register', [
-                'intent' => in_array($intent, ['live', 'vault', 'pamphlet'], true) ? $intent : null,
+                'intent' => $intent?->value,
+                'packages' => SubscriptionPackage::marketingOfferings()->values()->all(),
             ]);
         });
 

@@ -243,7 +243,7 @@ class DemoPersonasSeeder extends Seeder
         );
 
         $package = SubscriptionPackage::query()
-            ->where('slug', 'vault-monthly')
+            ->where('slug', 'living-legacy')
             ->first()
             ?? SubscriptionPackage::query()->where('billing_interval', 'monthly')->first();
 

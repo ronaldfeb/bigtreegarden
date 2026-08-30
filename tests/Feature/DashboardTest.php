@@ -15,7 +15,8 @@ test('authenticated users can visit the dashboard', function () {
     $this->actingAs($user);
 
     $response = $this->get(route('dashboard'));
-    $response->assertOk();
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page->component('user/Dashboard'));
 });
 
 test('staff users receive the shared staff user prop on the user dashboard', function () {

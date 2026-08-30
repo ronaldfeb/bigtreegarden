@@ -2,11 +2,31 @@
 
 use App\Models\Ambassador;
 use App\Models\AmbassadorImage;
+use App\Models\SubscriptionPackage;
 use App\Models\Testimonial;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
+
+it('exposes packages on the register page for marketing CTAs', function () {
+    SubscriptionPackage::factory()->create([
+        'slug' => 'funeral-memorial',
+        'name' => 'Funeral Memorial',
+        'billing_interval' => 'once_off',
+        'is_active' => true,
+        'sort_order' => 1,
+    ]);
+
+    $this->get(route('register'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('auth/Register')
+            ->where('intent', null)
+            ->has('packages', 1)
+            ->where('packages.0.slug', 'funeral-memorial'),
+        );
+});
 
 it('renders the marketing landing page', function () {
     $response = $this->get('/');

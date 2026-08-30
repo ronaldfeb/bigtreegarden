@@ -26,6 +26,7 @@ class MemorialPagePamphletStyleFactory extends Factory
             'name_color' => '#000000',
             'short_text_color' => '#000000',
             'dates_color' => '#000000',
+            'layout' => null,
         ];
     }
 }

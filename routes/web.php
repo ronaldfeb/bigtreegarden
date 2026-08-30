@@ -85,6 +85,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/payments/{pamphlet}/cancel', [PaymentController::class, 'handleCancel'])->name('payments.cancel');
 
     Route::get('/subscriptions/manage', [SubscriptionController::class, 'show'])->name('subscriptions.show');
+    Route::get('/subscriptions/start', [SubscriptionController::class, 'start'])->name('subscriptions.start');
     Route::post('/subscriptions/{package}', [SubscriptionController::class, 'store'])->name('subscriptions.store');
     Route::get('/subscriptions/{subscription}/checkout', [SubscriptionController::class, 'checkout'])->name('subscriptions.checkout');
     Route::get('/subscriptions/{subscription}/return', [SubscriptionController::class, 'handleReturn'])->name('subscriptions.return');

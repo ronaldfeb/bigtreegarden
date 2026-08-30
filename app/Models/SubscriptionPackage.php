@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\MemorialPackageSession;
 use Database\Factories\SubscriptionPackageFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 
 #[Fillable([
     'name',
@@ -60,12 +62,90 @@ class SubscriptionPackage extends Model
         return static::query()
             ->active()
             ->where('billing_interval', 'once_off')
-            ->where('slug', 'memorial-page')
+            ->whereIn('slug', ['funeral-memorial', 'memorial-page'])
+            ->orderByRaw("case when slug = 'funeral-memorial' then 0 else 1 end")
             ->first()
             ?? static::query()
                 ->active()
                 ->where('billing_interval', 'once_off')
                 ->orderBy('sort_order')
                 ->first();
+    }
+
+    /**
+     * Once-off package selected for this session, falling back to Funeral Memorial.
+     */
+    public static function selectedOnceOffPackage(): ?self
+    {
+        $slug = MemorialPackageSession::slug();
+
+        if ($slug !== null) {
+            $fromSession = static::query()
+                ->active()
+                ->where('billing_interval', 'once_off')
+                ->where('slug', $slug)
+                ->first();
+
+            if ($fromSession !== null) {
+                return $fromSession;
+            }
+        }
+
+        return static::memorialPagePackage();
+    }
+
+    public static function livingLegacyPackage(): ?self
+    {
+        return static::query()
+            ->active()
+            ->where('slug', 'living-legacy')
+            ->where('billing_interval', '!=', 'once_off')
+            ->first()
+            ?? static::query()
+                ->active()
+                ->where('billing_interval', '!=', 'once_off')
+                ->orderBy('sort_order')
+                ->first();
+    }
+
+    /**
+     * @return array{name: string, price_cents: int, currency: string, billing_interval: string}
+     */
+    public function pricingPayload(): array
+    {
+        return [
+            'name' => $this->name,
+            'price_cents' => $this->price_cents,
+            'currency' => $this->currency,
+            'billing_interval' => $this->billing_interval,
+        ];
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    public static function marketingOfferings(): Collection
+    {
+        return static::query()
+            ->active()
+            ->with(['features' => fn ($query) => $query->orderBy('sort_order')])
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn (self $package): array => [
+                'id' => $package->id,
+                'name' => $package->name,
+                'slug' => $package->slug,
+                'description' => $package->description,
+                'price_cents' => $package->price_cents,
+                'currency' => $package->currency,
+                'billing_interval' => $package->billing_interval,
+                'is_featured' => $package->is_featured,
+                'features' => $package->features->map(fn (SubscriptionPackageFeature $feature): array => [
+                    'id' => $feature->id,
+                    'label' => $feature->label,
+                    'description' => $feature->description,
+                    'is_included' => $feature->is_included,
+                ])->values()->all(),
+            ]);
     }
 }

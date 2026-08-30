@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import TawkToWidget from '@/components/TawkToWidget.vue';
-import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
+import AppLayout from '@/layouts/app/AppHeaderLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 
 type Props = {

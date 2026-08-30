@@ -6,9 +6,11 @@ import TawkToWidget from '@/components/TawkToWidget.vue';
 withDefaults(
     defineProps<{
         canRegister?: boolean;
+        hideFooter?: boolean;
     }>(),
     {
         canRegister: true,
+        hideFooter: false,
     },
 );
 </script>
@@ -19,7 +21,7 @@ withDefaults(
         <main class="min-w-0 flex-1">
             <slot />
         </main>
-        <MarketingFooter />
+        <MarketingFooter v-if="!hideFooter" />
         <TawkToWidget />
     </div>
 </template>

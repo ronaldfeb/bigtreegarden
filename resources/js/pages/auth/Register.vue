@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, router } from '@inertiajs/vue3';
-import { ArrowLeft, FileHeart, MessagesSquare, Vault } from 'lucide-vue-next';
+import { ArrowLeft, FileHeart, MapPin, MessagesSquare, Vault } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import type { Component } from 'vue';
 import InputError from '@/components/InputError.vue';
@@ -14,57 +14,69 @@ import AuthSplitLayout from '@/layouts/auth/AuthSplitLayout.vue';
 import { login, register } from '@/routes';
 import { store } from '@/routes/register';
 
-type Intent = 'live' | 'vault' | 'pamphlet';
+type PackageSlug = 'funeral-memorial' | 'memorial-legacy' | 'living-legacy';
+type Intent = PackageSlug | 'live';
 
-const props = defineProps<{
-    intent?: Intent | null;
-}>();
+type RegisterPackage = {
+    id: string;
+    name: string;
+    slug: PackageSlug;
+    description: string | null;
+    features: Array<{
+        id: string;
+        label: string;
+        is_included: boolean;
+    }>;
+};
 
-interface IntentOption {
-    id: Intent;
-    title: string;
-    description: string;
-    icon: Component;
-    panelTitle: string;
-    panelDescription: string;
-}
+const props = withDefaults(
+    defineProps<{
+        intent?: Intent | null;
+        packages?: RegisterPackage[];
+    }>(),
+    {
+        intent: null,
+        packages: () => [],
+    },
+);
 
-const intentOptions: IntentOption[] = [
-    {
-        id: 'live',
-        title: 'Post live comments',
-        description: 'Join a memorial page and share tributes in the live remembrance feed.',
-        icon: MessagesSquare,
-        panelTitle: 'Be part of the remembrance.',
-        panelDescription:
-            'Share messages of comfort on the day of the service and leave flowers at the memorial site.',
-    },
-    {
-        id: 'vault',
-        title: 'Get vault access',
-        description: 'Preserve photos, videos, and letters for your loved ones in a digital vault.',
-        icon: Vault,
-        panelTitle: 'Keep their legacy safe.',
-        panelDescription:
-            'A secure digital vault with beneficiaries, sealed until the moment it matters most.',
-    },
-    {
-        id: 'pamphlet',
-        title: 'Create a memorial pamphlet',
-        description: 'Design a beautiful QR-coded pamphlet and memorial page for a loved one.',
-        icon: FileHeart,
-        panelTitle: 'Honour a life, beautifully.',
-        panelDescription:
-            'Create a printable pamphlet with a QR code linking to a lasting online memorial page.',
-    },
-];
+const packageIcons: Record<PackageSlug, Component> = {
+    'funeral-memorial': FileHeart,
+    'memorial-legacy': MapPin,
+    'living-legacy': Vault,
+};
+
+const liveOption = {
+    id: 'live' as const,
+    title: 'Post live comments',
+    description: 'Join a memorial page and share tributes in the live remembrance feed.',
+    icon: MessagesSquare,
+    panelTitle: 'Be part of the remembrance.',
+    panelDescription:
+        'Share messages of comfort on the day of the service and leave flowers at the memorial site.',
+};
+
+const packageOptions = computed(() =>
+    props.packages.map((pkg) => ({
+        id: pkg.slug,
+        title: pkg.name,
+        description: pkg.description ?? pkg.features.find((feature) => feature.is_included)?.label ?? '',
+        icon: packageIcons[pkg.slug] ?? FileHeart,
+        panelTitle: pkg.name,
+        panelDescription: pkg.description ?? '',
+    })),
+);
 
 const selectedIntent = ref<Intent | null>(props.intent ?? null);
 const step = ref<'choose' | 'form'>(props.intent ? 'form' : 'choose');
 
-const selectedOption = computed(
-    () => intentOptions.find((option) => option.id === selectedIntent.value) ?? null,
-);
+const selectedOption = computed(() => {
+    if (selectedIntent.value === 'live') {
+        return liveOption;
+    }
+
+    return packageOptions.value.find((option) => option.id === selectedIntent.value) ?? null;
+});
 
 function chooseIntent(intent: Intent): void {
     selectedIntent.value = intent;
@@ -94,7 +106,7 @@ function backToChoice(): void {
         :title="step === 'choose' ? 'How would you like to start?' : 'Create an account'"
         :description="
             step === 'choose'
-                ? 'Choose what brings you here and we will guide you through it'
+                ? 'Choose a package and we will guide you through it'
                 : (selectedOption?.title ?? 'Enter your details below to create your account')
         "
         :panel-title="selectedOption?.panelTitle"
@@ -105,7 +117,7 @@ function backToChoice(): void {
         <div v-if="step === 'choose'" class="flex flex-col gap-6">
             <div class="grid gap-3">
                 <button
-                    v-for="option in intentOptions"
+                    v-for="option in packageOptions"
                     :key="option.id"
                     type="button"
                     class="flex items-start gap-4 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-brand hover:bg-brand-soft/50"
@@ -213,6 +225,7 @@ function backToChoice(): void {
 
             <div class="flex items-center justify-between text-muted-foreground text-sm">
                 <button
+                    v-if="selectedIntent !== 'live'"
                     type="button"
                     class="inline-flex items-center gap-1 underline underline-offset-4 hover:text-foreground"
                     data-test="register-change-intent"
@@ -221,7 +234,7 @@ function backToChoice(): void {
                     <ArrowLeft class="size-3.5" />
                     Change choice
                 </button>
-                <span>
+                <span :class="selectedIntent === 'live' ? 'ml-auto' : ''">
                     Have an account?
                     <TextLink :href="login()" class="underline underline-offset-4" :tabindex="6">
                         Log in

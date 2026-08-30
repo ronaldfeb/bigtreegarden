@@ -15,7 +15,10 @@ use App\Services\BackgroundRecommendationService;
 use App\Services\GuestPamphletDraftService;
 use App\Services\QrCodeService;
 use App\Support\MediaStorage;
+use App\Support\MemorialPackageSession;
+use App\Support\PamphletLayout;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -24,8 +27,10 @@ use Laravel\Fortify\Features;
 
 class PamphletController extends Controller
 {
-    public function create(): Response
+    public function create(Request $request): Response
     {
+        MemorialPackageSession::put($request->query('package'));
+
         return Inertia::render('pamphlets/CreatePamphlet', [
             'backgrounds' => $this->backgroundOptions(),
             'recommendedCollection' => null,
@@ -91,6 +96,7 @@ class PamphletController extends Controller
             'name_color' => $validated['name_color'],
             'short_text_color' => $validated['short_text_color'],
             'dates_color' => $validated['dates_color'],
+            'layout' => $validated['layout'] ?? PamphletLayout::defaults(),
         ]);
 
         $response = redirect()->route('pamphlets.show', $pamphlet)->with('status', [
@@ -189,6 +195,7 @@ class PamphletController extends Controller
             'name_color' => $validated['name_color'],
             'short_text_color' => $validated['short_text_color'],
             'dates_color' => $validated['dates_color'],
+            'layout' => $validated['layout'] ?? PamphletLayout::defaults(),
         ]);
 
         return redirect()->route('pamphlets.show', $pamphlet);
@@ -264,6 +271,7 @@ class PamphletController extends Controller
             'name_color' => $pamphlet->style?->name_color ?? '#000000',
             'short_text_color' => $pamphlet->style?->short_text_color ?? '#000000',
             'dates_color' => $pamphlet->style?->dates_color ?? '#000000',
+            'layout' => PamphletLayout::normalize($pamphlet->style?->layout),
             'transactions' => $pamphlet->transactions,
             'pamphlet_qr_code' => $pamphlet->memorialPage?->personOfInterest ? [
                 'target_url' => route('memorial.public.show', $pamphlet->public_slug),
@@ -294,6 +302,7 @@ class PamphletController extends Controller
             'name_color' => $pamphlet->style?->name_color ?? '#000000',
             'short_text_color' => $pamphlet->style?->short_text_color ?? '#000000',
             'dates_color' => $pamphlet->style?->dates_color ?? '#000000',
+            'layout' => PamphletLayout::normalize($pamphlet->style?->layout),
         ];
     }
 
@@ -302,18 +311,13 @@ class PamphletController extends Controller
      */
     private function memorialPricingPayload(): ?array
     {
-        $package = SubscriptionPackage::memorialPagePackage();
+        $package = SubscriptionPackage::selectedOnceOffPackage();
 
         if ($package === null) {
             return null;
         }
 
-        return [
-            'name' => $package->name,
-            'price_cents' => $package->price_cents,
-            'currency' => $package->currency,
-            'billing_interval' => $package->billing_interval,
-        ];
+        return $package->pricingPayload();
     }
 
     private function mediaDisk(): string

@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'name_color',
     'short_text_color',
     'dates_color',
+    'layout',
 ])]
 class MemorialPagePamphletStyle extends Model
 {
@@ -31,6 +32,7 @@ class MemorialPagePamphletStyle extends Model
         return [
             'is_bold' => 'boolean',
             'is_italic' => 'boolean',
+            'layout' => 'array',
         ];
     }
 

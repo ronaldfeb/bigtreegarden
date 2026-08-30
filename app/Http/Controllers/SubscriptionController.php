@@ -19,6 +19,15 @@ use Laravel\Fortify\Features;
 
 class SubscriptionController extends Controller
 {
+    public function start(Request $request): RedirectResponse
+    {
+        $package = SubscriptionPackage::livingLegacyPackage();
+
+        abort_if($package === null, 503, 'Living Legacy pricing is not configured.');
+
+        return $this->store($request, $package);
+    }
+
     public function store(Request $request, SubscriptionPackage $package): RedirectResponse
     {
         abort_unless($package->is_active && $package->billing_interval !== 'once_off', 404);

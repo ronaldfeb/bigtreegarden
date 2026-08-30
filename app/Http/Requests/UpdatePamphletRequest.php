@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests;
 
+use App\Support\PamphletLayout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdatePamphletRequest extends FormRequest
 {
@@ -17,8 +19,6 @@ class UpdatePamphletRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request.
-     *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
@@ -39,6 +39,37 @@ class UpdatePamphletRequest extends FormRequest
             'name_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'short_text_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'dates_color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'layout' => ['nullable'],
         ];
+    }
+
+    /**
+     * @return array<int, callable(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                PamphletLayout::validate($validator, $this->input('layout'));
+            },
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function validated($key = null, $default = null): mixed
+    {
+        $validated = parent::validated($key, $default);
+
+        if ($key !== null) {
+            return $validated;
+        }
+
+        $validated['layout'] = PamphletLayout::normalize(
+            PamphletLayout::decode($validated['layout'] ?? null),
+        );
+
+        return $validated;
     }
 }

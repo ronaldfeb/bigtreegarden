@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import {
+    formatPamphletDate,
+    normalizePamphletLayout,
+    photoBlockStyle,
+    textBlockStyle,
+    type PamphletLayoutData,
+} from '@/lib/pamphletLayout';
 
 export type PamphletPreviewData = {
     heading: string;
@@ -17,6 +24,7 @@ export type PamphletPreviewData = {
     name_color: string;
     short_text_color: string;
     dates_color: string;
+    layout?: PamphletLayoutData | null;
     pamphlet_qr_code?: { image_path: string | null; target_url?: string | null } | null;
 };
 
@@ -32,53 +40,19 @@ const props = withDefaults(
     },
 );
 
-const memorialImageContainerClasses = computed(() =>
-    props.pamphlet.image_shape === 'circle'
-        ? 'h-40 w-40 shrink-0 rounded-full sm:h-48 sm:w-48'
-        : 'h-48 w-full max-w-sm shrink-0 rounded-lg sm:h-56',
-);
+const layout = computed(() => normalizePamphletLayout(props.pamphlet.layout));
+const fontFamily = computed(() => props.pamphlet.font_family || 'Georgia');
 
 const memorialImageClasses = computed(() => [
     'h-full w-full',
-    props.pamphlet.image_crop_mode === 'contain' ? 'object-contain' : 'object-cover',
+    props.pamphlet.image_crop_mode === 'contain' ? 'object-contain bg-white/10' : 'object-cover',
+    props.pamphlet.image_shape === 'circle' ? 'rounded-full' : 'rounded-lg',
 ]);
 
-const formatDate = (value: string | null): string => {
-    if (value === null || value === '') {
-        return '—';
-    }
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-        return value;
-    }
-
-    switch (props.pamphlet.date_format) {
-        case 'd/m/Y':
-            return date.toLocaleDateString('en-GB');
-        case 'Y-m-d':
-            return date.toISOString().slice(0, 10);
-        case 'j F Y':
-            return date.toLocaleDateString('en-GB', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-            });
-        default:
-            return date.toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-            });
-    }
-};
-
 const formattedDateRange = computed(
-    () => `${formatDate(props.pamphlet.date_of_birth)} – ${formatDate(props.pamphlet.date_of_passing)}`,
+    () =>
+        `${formatPamphletDate(props.pamphlet.date_of_birth, props.pamphlet.date_format)} – ${formatPamphletDate(props.pamphlet.date_of_passing, props.pamphlet.date_format)}`,
 );
-
-const fontFamily = computed(() => props.pamphlet.font_family || 'Georgia');
 </script>
 
 <template>
@@ -88,6 +62,7 @@ const fontFamily = computed(() => props.pamphlet.font_family || 'Georgia');
             compact ? 'max-w-md' : 'max-w-xl',
             printable ? 'print:max-w-none print:rounded-none print:border-none print:shadow-none' : '',
         ]"
+        style="container-type: inline-size"
     >
         <img
             v-if="pamphlet.background_asset_path"
@@ -97,55 +72,52 @@ const fontFamily = computed(() => props.pamphlet.font_family || 'Georgia');
         />
         <div v-else class="aspect-[3/4] w-full bg-muted" aria-hidden="true" />
 
-        <div
-            class="absolute inset-0 flex flex-col items-center justify-between overflow-hidden px-8 py-8 text-center sm:px-10"
-            :style="{ fontFamily }"
-        >
-            <div class="flex w-full min-w-0 flex-col items-center gap-2">
-                <h2
-                    class="w-full break-words font-bold text-3xl leading-tight sm:text-4xl"
-                    :style="{ color: pamphlet.heading_color || '#000000', fontFamily }"
-                >
-                    {{ pamphlet.heading }}
-                </h2>
-            </div>
-
-            <div class="flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden">
-                <div
-                    class="overflow-hidden border border-black/10 bg-white/10"
-                    :class="memorialImageContainerClasses"
-                >
-                    <img
-                        v-if="pamphlet.uploaded_image_url"
-                        :src="pamphlet.uploaded_image_url"
-                        alt="Memorial image"
-                        :class="memorialImageClasses"
-                    />
-                    <div v-else class="flex h-full w-full items-center justify-center text-sm text-black/50">
-                        No image
-                    </div>
+        <div class="absolute inset-0 overflow-hidden" :style="{ fontFamily }">
+            <div
+                class="absolute overflow-hidden border border-black/10 bg-white/10"
+                :class="pamphlet.image_shape === 'circle' ? 'rounded-full' : 'rounded-lg'"
+                :style="photoBlockStyle(layout.photo)"
+            >
+                <img
+                    v-if="pamphlet.uploaded_image_url"
+                    :src="pamphlet.uploaded_image_url"
+                    alt="Memorial image"
+                    :class="memorialImageClasses"
+                />
+                <div v-else class="flex h-full w-full items-center justify-center text-sm text-black/50">
+                    No image
                 </div>
-
-                <p
-                    class="w-full break-words font-semibold text-xl sm:text-2xl"
-                    :style="{ color: pamphlet.name_color || '#000000', fontFamily }"
-                >
-                    {{ pamphlet.person_full_name }}
-                </p>
-
-                <p class="w-full text-sm" :style="{ color: pamphlet.dates_color || '#000000', fontFamily }">
-                    {{ formattedDateRange }}
-                </p>
-
-                <p
-                    class="w-full max-w-sm break-words whitespace-pre-wrap text-sm leading-relaxed"
-                    :style="{ color: pamphlet.short_text_color || '#000000', fontFamily }"
-                >
-                    {{ pamphlet.short_text }}
-                </p>
             </div>
 
-            <div class="flex shrink-0 flex-col items-center gap-1.5">
+            <h2
+                class="absolute break-words text-center font-bold leading-tight"
+                :style="textBlockStyle(layout.heading, pamphlet.heading_color || '#000000', fontFamily)"
+            >
+                {{ pamphlet.heading }}
+            </h2>
+
+            <p
+                class="absolute break-words text-center font-semibold leading-tight"
+                :style="textBlockStyle(layout.name, pamphlet.name_color || '#000000', fontFamily)"
+            >
+                {{ pamphlet.person_full_name }}
+            </p>
+
+            <p
+                class="absolute text-center leading-tight"
+                :style="textBlockStyle(layout.dates, pamphlet.dates_color || '#000000', fontFamily)"
+            >
+                {{ formattedDateRange }}
+            </p>
+
+            <p
+                class="absolute break-words whitespace-pre-wrap text-center leading-relaxed"
+                :style="textBlockStyle(layout.tribute, pamphlet.short_text_color || '#000000', fontFamily)"
+            >
+                {{ pamphlet.short_text }}
+            </p>
+
+            <div class="absolute bottom-[3%] left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5">
                 <div class="rounded-lg bg-white p-2 shadow-sm">
                     <img
                         v-if="pamphlet.pamphlet_qr_code?.image_path"

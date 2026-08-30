@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\MemorialPagePamphlet;
+use App\Models\Subscription;
+use App\Models\SubscriptionPackage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Fortify\Features;
@@ -26,11 +28,28 @@ function registrationPayload(array $overrides = []): array
 }
 
 it('passes a valid intent from the query string to the register page', function () {
+    $this->get(route('register', ['intent' => 'living-legacy']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('auth/Register')
+            ->has('packages')
+            ->where('intent', 'living-legacy'));
+});
+
+it('canonicalizes the vault alias to living-legacy', function () {
     $this->get(route('register', ['intent' => 'vault']))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('auth/Register')
-            ->where('intent', 'vault'));
+            ->where('intent', 'living-legacy'));
+});
+
+it('canonicalizes the pamphlet alias to funeral-memorial', function () {
+    $this->get(route('register', ['intent' => 'pamphlet']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('auth/Register')
+            ->where('intent', 'funeral-memorial'));
 });
 
 it('ignores an invalid intent on the register page', function () {
@@ -41,7 +60,16 @@ it('ignores an invalid intent on the register page', function () {
             ->where('intent', null));
 });
 
-it('redirects to pamphlet creation after registering with the pamphlet intent', function () {
+it('redirects to pamphlet creation after registering with the funeral-memorial intent', function () {
+    $response = $this->post(route('register.store'), registrationPayload([
+        'intent' => 'funeral-memorial',
+    ]));
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('pamphlets.create'));
+});
+
+it('redirects to pamphlet creation after registering with the pamphlet alias', function () {
     $response = $this->post(route('register.store'), registrationPayload([
         'intent' => 'pamphlet',
     ]));
@@ -50,14 +78,58 @@ it('redirects to pamphlet creation after registering with the pamphlet intent', 
     $response->assertRedirect(route('pamphlets.create'));
 });
 
-it('redirects to pricing after registering with the vault intent', function () {
+it('stores the memorial-legacy package on the session after registering', function () {
+    SubscriptionPackage::factory()->create([
+        'slug' => 'memorial-legacy',
+        'billing_interval' => 'once_off',
+        'price_cents' => 149900,
+        'is_active' => true,
+    ]);
+
+    $response = $this->post(route('register.store'), registrationPayload([
+        'intent' => 'memorial-legacy',
+    ]));
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('pamphlets.create'));
+    expect(session('memorial_package_slug'))->toBe('memorial-legacy');
+});
+
+it('starts living legacy checkout after registering with the living-legacy intent', function () {
+    $package = SubscriptionPackage::factory()->create([
+        'slug' => 'living-legacy',
+        'billing_interval' => 'monthly',
+        'is_active' => true,
+    ]);
+
+    $response = $this->post(route('register.store'), registrationPayload([
+        'intent' => 'living-legacy',
+    ]));
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('subscriptions.start'));
+
+    $follow = $this->get(route('subscriptions.start'));
+    $subscription = Subscription::query()->where('user_id', auth()->id())->first();
+
+    expect($subscription)->not->toBeNull();
+    expect($subscription->subscription_package_id)->toBe($package->id);
+    $follow->assertRedirect(route('subscriptions.checkout', $subscription));
+});
+
+it('starts living legacy checkout after registering with the vault alias', function () {
+    SubscriptionPackage::factory()->create([
+        'slug' => 'living-legacy',
+        'billing_interval' => 'monthly',
+        'is_active' => true,
+    ]);
+
     $response = $this->post(route('register.store'), registrationPayload([
         'intent' => 'vault',
     ]));
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('pricing'));
-    $response->assertSessionHas('status');
+    $response->assertRedirect(route('subscriptions.start'));
 });
 
 it('redirects to find a memorial after registering with the live intent', function () {
@@ -82,7 +154,7 @@ it('prefers the intended url over the intent redirect', function () {
 
     $response = $this->withSession(['url.intended' => $intendedUrl])
         ->post(route('register.store'), registrationPayload([
-            'intent' => 'vault',
+            'intent' => 'living-legacy',
         ]));
 
     $this->assertAuthenticated();
