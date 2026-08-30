@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import CheckoutDiscountCode, { type CheckoutDiscount } from '@/components/checkout/CheckoutDiscountCode.vue';
 import { Button } from '@/components/ui/button';
 import ProviderLayout from '@/layouts/provider/ProviderLayout.vue';
+import {
+    apply as applyDiscount,
+    remove as removeDiscount,
+} from '@/routes/provider/credits/discount';
 import { index } from '@/routes/provider/credits';
 
 const props = withDefaults(
@@ -17,12 +22,23 @@ const props = withDefaults(
             currency: string;
             payment_reference: string;
         };
+        amount_cents?: number;
+        original_amount_cents?: number;
         autoSubmit?: boolean;
+        discount?: CheckoutDiscount;
     }>(),
-    { autoSubmit: true },
+    {
+        autoSubmit: false,
+        discount: null,
+        amount_cents: undefined,
+        original_amount_cents: undefined,
+    },
 );
 
 const payfastForm = ref<HTMLFormElement | null>(null);
+
+const payableCents = computed(() => props.amount_cents ?? props.purchase.price_cents);
+const listCents = computed(() => props.original_amount_cents ?? props.purchase.price_cents);
 
 onMounted(() => {
     if (props.autoSubmit) {
@@ -35,12 +51,28 @@ onMounted(() => {
     <ProviderLayout>
         <Head title="PayFast checkout" />
         <div class="mx-auto max-w-lg space-y-4 rounded-xl border border-border bg-card p-6">
-            <h1 class="text-xl font-semibold">Redirecting to PayFast</h1>
+            <h1 class="text-xl font-semibold">Complete payment</h1>
             <p class="text-sm text-muted-foreground">
-                {{ purchase.package_name }} · {{ purchase.page_count }} pages ·
-                R{{ (purchase.price_cents / 100).toFixed(2) }}
+                {{ purchase.package_name }} · {{ purchase.page_count }} pages
             </p>
+            <div class="text-right">
+                <p
+                    v-if="discount && listCents !== payableCents"
+                    class="text-muted-foreground text-xs line-through"
+                >
+                    R{{ (listCents / 100).toFixed(2) }}
+                </p>
+                <p class="font-semibold">R{{ (payableCents / 100).toFixed(2) }}</p>
+            </div>
             <p class="font-mono text-xs">Ref: {{ purchase.payment_reference }}</p>
+
+            <CheckoutDiscountCode
+                :discount="discount"
+                :apply-url="applyDiscount.url(purchase.id)"
+                :remove-url="removeDiscount.url(purchase.id)"
+                :currency="purchase.currency"
+            />
+
             <form ref="payfastForm" :action="checkoutUrl" method="post" class="space-y-3">
                 <input
                     v-for="(value, key) in payload"

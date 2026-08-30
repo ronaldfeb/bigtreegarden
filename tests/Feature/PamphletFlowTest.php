@@ -735,7 +735,7 @@ it('passes amount, currency, and pamphlet preview to the checkout page', functio
         ->component('payments/Checkout')
         ->where('amount_cents', 69900)
         ->where('currency', 'ZAR')
-        ->where('autoSubmit', true)
+        ->where('autoSubmit', false)
         ->where('pamphlet.heading', 'Checkout Preview Heading')
         ->has('pricing')
         ->has('pamphlet.layout.heading')

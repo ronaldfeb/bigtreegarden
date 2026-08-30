@@ -1,24 +1,36 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
+import CheckoutDiscountCode, { type CheckoutDiscount } from '@/components/checkout/CheckoutDiscountCode.vue';
 import { Button } from '@/components/ui/button';
 import MarketingLayout from '@/layouts/marketing/MarketingLayout.vue';
 import { pricing } from '@/routes';
+import {
+    apply as applyDiscount,
+    remove as removeDiscount,
+} from '@/routes/subscriptions/discount';
 
 const props = withDefaults(
     defineProps<{
         checkoutUrl: string;
         payload: Record<string, string | number | null>;
+        subscriptionId: string;
         packageName: string;
         amount_cents: number;
+        original_amount_cents?: number;
+        recurring_amount_cents?: number;
         currency: string;
         billing_interval: string;
         autoSubmit?: boolean;
+        discount?: CheckoutDiscount;
         canRegister?: boolean;
     }>(),
     {
-        autoSubmit: true,
+        autoSubmit: false,
         canRegister: true,
+        discount: null,
+        original_amount_cents: undefined,
+        recurring_amount_cents: undefined,
     },
 );
 
@@ -34,6 +46,20 @@ const formattedPrice = computed(() =>
         style: 'currency',
         currency: props.currency || 'ZAR',
     }).format(props.amount_cents / 100),
+);
+
+const formattedListPrice = computed(() =>
+    new Intl.NumberFormat('en-ZA', {
+        style: 'currency',
+        currency: props.currency || 'ZAR',
+    }).format((props.original_amount_cents ?? props.amount_cents) / 100),
+);
+
+const formattedRecurring = computed(() =>
+    new Intl.NumberFormat('en-ZA', {
+        style: 'currency',
+        currency: props.currency || 'ZAR',
+    }).format((props.recurring_amount_cents ?? props.amount_cents) / 100),
 );
 
 const intervalLabel = computed(
@@ -69,8 +95,26 @@ onMounted(() => {
                             <p class="font-medium text-sm">{{ packageName }}</p>
                             <p class="text-muted-foreground text-xs capitalize">{{ intervalLabel }}</p>
                         </div>
-                        <p class="shrink-0 font-semibold text-base">{{ formattedPrice }}</p>
+                        <div class="shrink-0 text-right">
+                            <p
+                                v-if="discount && original_amount_cents && original_amount_cents !== amount_cents"
+                                class="text-muted-foreground text-xs line-through"
+                            >
+                                {{ formattedListPrice }}
+                            </p>
+                            <p class="font-semibold text-base">{{ formattedPrice }}</p>
+                            <p class="text-muted-foreground text-xs">
+                                Then {{ formattedRecurring }} {{ intervalLabel }}
+                            </p>
+                        </div>
                     </div>
+
+                    <CheckoutDiscountCode
+                        :discount="discount"
+                        :apply-url="applyDiscount.url(subscriptionId)"
+                        :remove-url="removeDiscount.url(subscriptionId)"
+                        :currency="currency"
+                    />
                 </div>
 
                 <form ref="payfastForm" :action="checkoutUrl" method="post" class="mt-8 flex flex-col gap-3">
@@ -94,8 +138,8 @@ onMounted(() => {
                 <div class="mt-6 space-y-3 border-t border-border pt-5">
                     <img src="/assets/logo/Payfast-logo.svg" alt="PayFast" class="h-10 w-auto" />
                     <p class="text-muted-foreground text-sm leading-relaxed">
-                        You will be redirected to our payment processor PayFast to set up your recurring
-                        subscription.
+                        You will be redirected to our payment processor PayFast to set up your recurring subscription.
+                        Any discount applies to the first payment only.
                     </p>
                 </div>
             </aside>

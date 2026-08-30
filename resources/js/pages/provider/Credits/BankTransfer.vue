@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
+import CheckoutDiscountCode, { type CheckoutDiscount } from '@/components/checkout/CheckoutDiscountCode.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,27 +12,41 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ProviderLayout from '@/layouts/provider/ProviderLayout.vue';
+import {
+    apply as applyDiscount,
+    remove as removeDiscount,
+} from '@/routes/provider/credits/discount';
 import { index, proof } from '@/routes/provider/credits';
 
-defineProps<{
-    purchase: {
-        id: string;
-        package_name: string;
-        page_count: number;
-        price_cents: number;
-        currency: string;
-        payment_reference: string;
-        status: string;
-        proof_of_payment_path: string | null;
-    };
-    bankDetails: {
-        bank_name: string;
-        account_name: string;
-        account_number: string;
-        branch_code: string | null;
-        reference_note: string | null;
-    } | null;
-}>();
+withDefaults(
+    defineProps<{
+        purchase: {
+            id: string;
+            package_name: string;
+            page_count: number;
+            price_cents: number;
+            currency: string;
+            payment_reference: string;
+            status: string;
+            proof_of_payment_path: string | null;
+        };
+        bankDetails: {
+            bank_name: string;
+            account_name: string;
+            account_number: string;
+            branch_code: string | null;
+            reference_note: string | null;
+        } | null;
+        amount_cents?: number;
+        original_amount_cents?: number;
+        discount?: CheckoutDiscount;
+    }>(),
+    {
+        amount_cents: undefined,
+        original_amount_cents: undefined,
+        discount: null,
+    },
+);
 </script>
 
 <template>
@@ -45,9 +60,27 @@ defineProps<{
                 <CardContent class="space-y-3 text-sm">
                     <p>
                         Transfer
-                        <strong>R{{ (purchase.price_cents / 100).toFixed(2) }}</strong>
+                        <strong>R{{ ((amount_cents ?? purchase.price_cents) / 100).toFixed(2) }}</strong>
                         for {{ purchase.page_count }} memorial pages.
+                        <span
+                            v-if="
+                                discount &&
+                                (original_amount_cents ?? purchase.price_cents) !==
+                                    (amount_cents ?? purchase.price_cents)
+                            "
+                            class="text-muted-foreground line-through"
+                        >
+                            R{{ ((original_amount_cents ?? purchase.price_cents) / 100).toFixed(2) }}
+                        </span>
                     </p>
+
+                    <CheckoutDiscountCode
+                        :discount="discount"
+                        :apply-url="applyDiscount.url(purchase.id)"
+                        :remove-url="removeDiscount.url(purchase.id)"
+                        :currency="purchase.currency"
+                    />
+
                     <template v-if="bankDetails">
                         <p><span class="text-muted-foreground">Bank:</span> {{ bankDetails.bank_name }}</p>
                         <p><span class="text-muted-foreground">Account name:</span> {{ bankDetails.account_name }}</p>

@@ -12,6 +12,7 @@ use App\Models\PlatformBankDetail;
 use App\Models\ServiceProviderCreditPackage;
 use App\Models\ServiceProviderCreditPurchase;
 use App\Models\Transaction;
+use App\Services\DiscountCodeService;
 use App\Services\PayfastService;
 use App\Services\ServiceProviderCreditService;
 use App\Support\MediaStorage;
@@ -107,6 +108,7 @@ class CreditController extends Controller
         Request $request,
         ServiceProviderCreditPurchase $purchase,
         PayfastService $payfastService,
+        DiscountCodeService $discountCodeService,
     ): InertiaResponse|RedirectResponse {
         $this->assertOwnsPurchase($request, $purchase);
 
@@ -121,22 +123,7 @@ class CreditController extends Controller
             'This purchase is not a PayFast payment.',
         );
 
-        $transaction = $purchase->transactions()
-            ->where('status', TransactionStatus::Initiated)
-            ->latest()
-            ->first();
-
-        if ($transaction === null) {
-            $transaction = $purchase->transactions()->create([
-                'user_id' => $request->user()->id,
-                'type' => TransactionType::ProviderCreditPurchase,
-                'provider' => 'payfast',
-                'merchant_reference' => (string) Str::ulid(),
-                'amount_cents' => $purchase->price_cents,
-                'currency' => $purchase->currency,
-                'status' => TransactionStatus::Initiated,
-            ]);
-        }
+        $transaction = $this->pendingTransaction($request, $purchase);
 
         return Inertia::render('provider/Credits/Checkout', [
             'checkoutUrl' => $payfastService->checkoutUrl(),
@@ -149,18 +136,106 @@ class CreditController extends Controller
                 'currency' => $purchase->currency,
                 'payment_reference' => $purchase->payment_reference,
             ],
-            'autoSubmit' => true,
+            'amount_cents' => $transaction->amount_cents,
+            'original_amount_cents' => $transaction->original_amount_cents ?? $transaction->amount_cents,
+            'autoSubmit' => false,
+            'discount' => $discountCodeService->checkoutPayload($transaction),
         ]);
     }
 
-    public function bankTransfer(Request $request, ServiceProviderCreditPurchase $purchase): InertiaResponse
-    {
+    public function applyDiscount(
+        Request $request,
+        ServiceProviderCreditPurchase $purchase,
+        DiscountCodeService $discountCodeService,
+        ServiceProviderCreditService $creditService,
+    ): RedirectResponse {
+        $this->assertOwnsPurchase($request, $purchase);
+        abort_unless(
+            $purchase->status === ServiceProviderCreditPurchaseStatus::PendingPayment,
+            422,
+            'This purchase can no longer accept a discount code.',
+        );
+
+        $request->validate([
+            'code' => ['required', 'string', 'max:32'],
+        ]);
+
+        $package = $purchase->package;
+        abort_if($package === null, 422, 'Credit package is missing.');
+
+        $transaction = $this->pendingTransaction($request, $purchase);
+        $discountCodeService->apply($transaction, $request->string('code')->toString(), $package);
+        $transaction->refresh();
+
+        $purchase->update([
+            'price_cents' => $transaction->amount_cents,
+        ]);
+
+        if (
+            $purchase->payment_method === ServiceProviderCreditPaymentMethod::Payfast
+            && $transaction->amount_cents <= 0
+        ) {
+            $transaction->update([
+                'status' => TransactionStatus::Complete,
+                'paid_at' => now(),
+                'raw_payload' => ['source' => 'discount_code_zero'],
+            ]);
+            $discountCodeService->consume($transaction->fresh(), $request->user());
+            $creditService->releasePurchase($purchase->fresh(), $request->user());
+
+            return redirect()->route('provider.credits.index')
+                ->with('status', 'Discount applied. Your credits are available — no payment required.');
+        }
+
+        return redirect()->route(
+            $purchase->payment_method === ServiceProviderCreditPaymentMethod::Payfast
+                ? 'provider.credits.checkout'
+                : 'provider.credits.bank-transfer',
+            $purchase,
+        );
+    }
+
+    public function removeDiscount(
+        Request $request,
+        ServiceProviderCreditPurchase $purchase,
+        DiscountCodeService $discountCodeService,
+    ): RedirectResponse {
+        $this->assertOwnsPurchase($request, $purchase);
+
+        $transaction = $purchase->transactions()
+            ->where('status', TransactionStatus::Initiated)
+            ->latest()
+            ->first();
+
+        if ($transaction !== null) {
+            $discountCodeService->release($transaction);
+            $transaction->refresh();
+            $purchase->update([
+                'price_cents' => $transaction->amount_cents,
+            ]);
+        }
+
+        return redirect()->route(
+            $purchase->payment_method === ServiceProviderCreditPaymentMethod::Payfast
+                ? 'provider.credits.checkout'
+                : 'provider.credits.bank-transfer',
+            $purchase,
+        );
+    }
+
+    public function bankTransfer(
+        Request $request,
+        ServiceProviderCreditPurchase $purchase,
+        DiscountCodeService $discountCodeService,
+    ): InertiaResponse {
         $this->assertOwnsPurchase($request, $purchase);
 
         abort_unless(
             $purchase->payment_method === ServiceProviderCreditPaymentMethod::BankTransfer,
             422,
         );
+
+        $transaction = $this->pendingTransaction($request, $purchase);
 
         return Inertia::render('provider/Credits/BankTransfer', [
             'purchase' => [
@@ -173,6 +248,9 @@ class CreditController extends Controller
                 'status' => $purchase->status->value,
                 'proof_of_payment_path' => $purchase->proof_of_payment_path,
             ],
+            'amount_cents' => $transaction->amount_cents,
+            'original_amount_cents' => $transaction->original_amount_cents ?? $transaction->amount_cents,
+            'discount' => $discountCodeService->checkoutPayload($transaction),
             'bankDetails' => PlatformBankDetail::current()?->only([
                 'bank_name',
                 'account_name',
@@ -230,13 +308,25 @@ class CreditController extends Controller
         return redirect()->route('provider.credits.index')->with('status', $message);
     }
 
-    public function handleCancel(Request $request, ServiceProviderCreditPurchase $purchase): RedirectResponse
-    {
+    public function handleCancel(
+        Request $request,
+        ServiceProviderCreditPurchase $purchase,
+        DiscountCodeService $discountCodeService,
+    ): RedirectResponse {
         $this->assertOwnsPurchase($request, $purchase);
 
-        $purchase->transactions()->latest()->first()?->update([
-            'status' => TransactionStatus::Cancelled,
-        ]);
+        $transaction = $purchase->transactions()->latest()->first();
+
+        if ($transaction !== null) {
+            $discountCodeService->release($transaction);
+            $transaction->update([
+                'status' => TransactionStatus::Cancelled,
+            ]);
+            $transaction->refresh();
+            $purchase->update([
+                'price_cents' => $transaction->amount_cents,
+            ]);
+        }
 
         if ($purchase->status === ServiceProviderCreditPurchaseStatus::PendingPayment) {
             $purchase->update(['status' => ServiceProviderCreditPurchaseStatus::Cancelled]);
@@ -251,6 +341,7 @@ class CreditController extends Controller
         ServiceProviderCreditPurchase $purchase,
         PayfastService $payfastService,
         ServiceProviderCreditService $creditService,
+        DiscountCodeService $discountCodeService,
     ): Response {
         $payload = $request->all();
         $paramString = $payfastService->buildItnParameterString($payload);
@@ -293,8 +384,11 @@ class CreditController extends Controller
                 'raw_payload' => $payload,
             ]);
 
+            $discountCodeService->consume($transaction->fresh(), $purchase->purchasedBy);
             $creditService->releasePurchase($purchase->fresh());
         } else {
+            $discountCodeService->release($transaction);
+
             $transaction->update([
                 'provider_payment_id' => $request->string('pf_payment_id')->toString() ?: null,
                 'status' => TransactionStatus::Failed,
@@ -303,6 +397,37 @@ class CreditController extends Controller
         }
 
         return response('OK', 200);
+    }
+
+    private function pendingTransaction(Request $request, ServiceProviderCreditPurchase $purchase): Transaction
+    {
+        $transaction = $purchase->transactions()
+            ->where('status', TransactionStatus::Initiated)
+            ->latest()
+            ->first();
+
+        $listPrice = $purchase->package?->price_cents ?? $purchase->price_cents;
+
+        if ($transaction === null) {
+            return $purchase->transactions()->create([
+                'user_id' => $request->user()->id,
+                'type' => TransactionType::ProviderCreditPurchase,
+                'provider' => $purchase->payment_method === ServiceProviderCreditPaymentMethod::Payfast
+                    ? 'payfast'
+                    : 'bank_transfer',
+                'merchant_reference' => (string) Str::ulid(),
+                'amount_cents' => $listPrice,
+                'currency' => $purchase->currency,
+                'status' => TransactionStatus::Initiated,
+            ]);
+        }
+
+        if ($transaction->discount_code_id === null && $transaction->amount_cents !== $listPrice) {
+            $transaction->update(['amount_cents' => $listPrice]);
+            $purchase->update(['price_cents' => $listPrice]);
+        }
+
+        return $transaction->fresh();
     }
 
     private function assertOwnsPurchase(Request $request, ServiceProviderCreditPurchase $purchase): void

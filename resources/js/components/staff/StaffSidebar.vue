@@ -43,6 +43,7 @@ import { dashboard } from '@/routes/staff';
 import { edit as bankDetailsEdit } from '@/routes/staff/commerce/bank-details';
 import { index as creditPackagesIndex } from '@/routes/staff/commerce/credit-packages';
 import { index as creditPurchasesIndex } from '@/routes/staff/commerce/credit-purchases';
+import { index as discountCodesIndex } from '@/routes/staff/commerce/discount-codes';
 import { index as subscriptionPackagesIndex } from '@/routes/staff/commerce/subscription-packages';
 import { index as subscriptionsIndex } from '@/routes/staff/commerce/subscriptions';
 import { index as transactionsIndex } from '@/routes/staff/commerce/transactions';
@@ -161,6 +162,11 @@ const sections = computed((): NavSection[] => {
                     title: 'Subscription packages',
                     href: subscriptionPackagesIndex(),
                     icon: Package,
+                },
+                {
+                    title: 'Discount codes',
+                    href: discountCodesIndex(),
+                    icon: CreditCard,
                 },
                 {
                     title: 'Credit packages',

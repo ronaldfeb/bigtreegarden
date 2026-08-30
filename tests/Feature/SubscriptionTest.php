@@ -117,7 +117,7 @@ it('renders vault subscription checkout with pricing props', function () {
             ->where('amount_cents', 9900)
             ->where('currency', 'ZAR')
             ->where('billing_interval', 'monthly')
-            ->where('autoSubmit', true)
+            ->where('autoSubmit', false)
             ->has('checkoutUrl')
             ->has('payload'));
 });

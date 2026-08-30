@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ServiceProviderCreditPurchaseStatus;
+use App\Enums\TransactionStatus;
 use App\Models\MemorialPage;
 use App\Models\ServiceProvider;
 use App\Models\ServiceProviderCreditLedgerEntry;
@@ -15,6 +16,8 @@ use RuntimeException;
 
 class ServiceProviderCreditService
 {
+    public function __construct(private DiscountCodeService $discountCodeService) {}
+
     public function releasePurchase(ServiceProviderCreditPurchase $purchase, ?User $actor = null, ?StaffUser $staffUser = null, ?string $note = null): void
     {
         DB::transaction(function () use ($purchase, $actor, $staffUser, $note): void {
@@ -62,6 +65,15 @@ class ServiceProviderCreditService
                 'reviewed_at' => $staffUser !== null ? now() : $lockedPurchase->reviewed_at,
                 'review_note' => $note ?? $lockedPurchase->review_note,
             ]);
+
+            $transaction = $lockedPurchase->transactions()
+                ->whereNotNull('discount_code_id')
+                ->latest()
+                ->first();
+
+            if ($transaction !== null) {
+                $this->discountCodeService->consume($transaction, $actor ?? $lockedPurchase->purchasedBy);
+            }
         });
     }
 
@@ -76,6 +88,15 @@ class ServiceProviderCreditService
 
             if ($lockedPurchase->status !== ServiceProviderCreditPurchaseStatus::PendingReview) {
                 throw new InvalidArgumentException('Only purchases pending review can be rejected.');
+            }
+
+            $transaction = $lockedPurchase->transactions()
+                ->where('status', TransactionStatus::Initiated)
+                ->latest()
+                ->first();
+
+            if ($transaction !== null) {
+                $this->discountCodeService->release($transaction);
             }
 
             $lockedPurchase->update([

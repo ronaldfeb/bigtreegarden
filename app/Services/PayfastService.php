@@ -48,6 +48,7 @@ class PayfastService
         $user = $subscription->user;
         $package = $subscription->package;
         $amount = number_format($transaction->amount_cents / 100, 2, '.', '');
+        $recurringAmount = number_format($package->price_cents / 100, 2, '.', '');
         [$nameFirst, $nameLast] = $this->splitName($user->name);
 
         $data = [
@@ -63,7 +64,7 @@ class PayfastService
             'amount' => $amount,
             'item_name' => sprintf('%s subscription', $package->name),
             'subscription_type' => 1,
-            'recurring_amount' => $amount,
+            'recurring_amount' => $recurringAmount,
             'frequency' => $package->billing_interval === 'annual' ? 6 : 3,
             'cycles' => 0,
         ];

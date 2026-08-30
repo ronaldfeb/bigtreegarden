@@ -55,6 +55,8 @@ Route::middleware([EnsureServiceProviderOwner::class, EnsureServiceProviderIsAct
     Route::get('credits', [CreditController::class, 'index'])->name('credits.index');
     Route::post('credits', [CreditController::class, 'store'])->name('credits.store');
     Route::get('credits/{purchase}/checkout', [CreditController::class, 'checkout'])->name('credits.checkout');
+    Route::post('credits/{purchase}/discount', [CreditController::class, 'applyDiscount'])->name('credits.discount.apply');
+    Route::delete('credits/{purchase}/discount', [CreditController::class, 'removeDiscount'])->name('credits.discount.remove');
     Route::get('credits/{purchase}/bank-transfer', [CreditController::class, 'bankTransfer'])->name('credits.bank-transfer');
     Route::post('credits/{purchase}/proof', [CreditController::class, 'uploadProof'])->name('credits.proof');
     Route::get('credits/{purchase}/return', [CreditController::class, 'handleReturn'])->name('credits.return');

@@ -22,7 +22,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'merchant_reference',
     'provider_payment_id',
     'amount_cents',
+    'original_amount_cents',
     'currency',
+    'discount_code_id',
     'status',
     'paid_at',
     'raw_payload',
@@ -53,5 +55,10 @@ class Transaction extends Model
     public function payable(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    public function discountCode(): BelongsTo
+    {
+        return $this->belongsTo(DiscountCode::class);
     }
 }

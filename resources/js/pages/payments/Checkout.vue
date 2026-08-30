@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
+import CheckoutDiscountCode, { type CheckoutDiscount } from '@/components/checkout/CheckoutDiscountCode.vue';
 import PamphletPreview from '@/components/pamphlets/PamphletPreview.vue';
 import { Button } from '@/components/ui/button';
 import MarketingLayout from '@/layouts/marketing/MarketingLayout.vue';
+import {
+    apply as applyDiscount,
+    remove as removeDiscount,
+} from '@/routes/payments/discount';
 
 const props = withDefaults(
     defineProps<{
@@ -11,8 +16,10 @@ const props = withDefaults(
         payload: Record<string, string | number | null>;
         paymentId: string;
         amount_cents: number;
+        original_amount_cents?: number;
         currency: string;
         autoSubmit?: boolean;
+        discount?: CheckoutDiscount;
         pamphlet: {
             id: string;
             heading: string;
@@ -43,19 +50,32 @@ const props = withDefaults(
         canRegister?: boolean;
     }>(),
     {
-        autoSubmit: true,
+        autoSubmit: false,
         canRegister: true,
         pricing: null,
+        discount: null,
+        original_amount_cents: undefined,
     },
 );
 
 const payfastForm = ref<HTMLFormElement | null>(null);
+
+const listPriceCents = computed(
+    () => props.original_amount_cents ?? props.pricing?.price_cents ?? props.amount_cents,
+);
 
 const formattedPrice = computed(() =>
     new Intl.NumberFormat('en-ZA', {
         style: 'currency',
         currency: props.currency || props.pricing?.currency || 'ZAR',
     }).format(props.amount_cents / 100),
+);
+
+const formattedListPrice = computed(() =>
+    new Intl.NumberFormat('en-ZA', {
+        style: 'currency',
+        currency: props.currency || props.pricing?.currency || 'ZAR',
+    }).format(listPriceCents.value / 100),
 );
 
 const statusLabel = computed(() => props.pamphlet.status.replaceAll('_', ' '));
@@ -70,7 +90,6 @@ onMounted(() => {
 </script>
 
 <template>
-
     <Head title="Checkout" />
 
     <MarketingLayout :can-register="canRegister">
@@ -95,13 +114,29 @@ onMounted(() => {
                                 <p class="font-medium text-sm">{{ pricing?.name ?? 'Memorial pamphlet' }}</p>
                                 <p class="text-muted-foreground text-xs">For {{ pamphlet.person_full_name }}</p>
                             </div>
-                            <p class="shrink-0 font-semibold text-base">{{ formattedPrice }}</p>
+                            <div class="shrink-0 text-right">
+                                <p
+                                    v-if="discount && listPriceCents !== amount_cents"
+                                    class="text-muted-foreground text-xs line-through"
+                                >
+                                    {{ formattedListPrice }}
+                                </p>
+                                <p class="font-semibold text-base">{{ formattedPrice }}</p>
+                            </div>
                         </div>
+
+                        <CheckoutDiscountCode
+                            :discount="discount"
+                            :apply-url="applyDiscount.url(pamphlet.id)"
+                            :remove-url="removeDiscount.url(pamphlet.id)"
+                            :currency="currency"
+                        />
 
                         <div class="flex items-center justify-between gap-3 text-sm">
                             <span class="text-muted-foreground">Status</span>
-                            <span class="rounded-full border border-border px-2.5 py-0.5 capitalize">{{ statusLabel
-                                }}</span>
+                            <span class="rounded-full border border-border px-2.5 py-0.5 capitalize">{{
+                                statusLabel
+                            }}</span>
                         </div>
 
                         <div class="flex items-center justify-between gap-3 text-sm">
@@ -111,8 +146,13 @@ onMounted(() => {
                     </div>
 
                     <form ref="payfastForm" :action="checkoutUrl" method="post" class="mt-8 flex flex-col gap-3">
-                        <input v-for="(value, key) in payload" :key="key" type="hidden" :name="key"
-                            :value="value ?? ''" />
+                        <input
+                            v-for="(value, key) in payload"
+                            :key="key"
+                            type="hidden"
+                            :name="key"
+                            :value="value ?? ''"
+                        />
 
                         <Button as-child variant="outline" class="w-full sm:w-1/3">
                             <Link :href="`/pamphlets/${pamphlet.id}/edit`">Back to edit</Link>

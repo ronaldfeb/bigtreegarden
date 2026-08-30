@@ -9,7 +9,10 @@ use App\Models\Transaction;
 
 class PamphletPaymentFulfillmentService
 {
-    public function __construct(private QrCodeService $qrCodeService) {}
+    public function __construct(
+        private QrCodeService $qrCodeService,
+        private DiscountCodeService $discountCodeService,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $rawPayload
@@ -30,6 +33,8 @@ class PamphletPaymentFulfillmentService
             'paid_at' => now(),
             'raw_payload' => $rawPayload,
         ]);
+
+        $this->discountCodeService->consume($transaction->fresh());
 
         $pamphlet->update([
             'status' => PamphletStatus::Paid,

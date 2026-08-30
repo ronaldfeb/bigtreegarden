@@ -8,6 +8,7 @@ use App\Enums\TransactionType;
 use App\Models\MemorialPagePamphlet;
 use App\Models\SubscriptionPackage;
 use App\Models\Transaction;
+use App\Services\DiscountCodeService;
 use App\Services\GuestPamphletDraftService;
 use App\Services\PamphletPaymentFulfillmentService;
 use App\Services\PayfastService;
@@ -47,8 +48,11 @@ class PaymentController extends Controller
             ->withCookie($guestPamphletDraftService->clearCookie());
     }
 
-    public function checkout(MemorialPagePamphlet $pamphlet, PayfastService $payfastService): InertiaResponse|RedirectResponse
-    {
+    public function checkout(
+        MemorialPagePamphlet $pamphlet,
+        PayfastService $payfastService,
+        DiscountCodeService $discountCodeService,
+    ): InertiaResponse|RedirectResponse {
         abort_unless($pamphlet->isOwnedBy(request()->user()), 403);
 
         if (in_array($pamphlet->status, [PamphletStatus::Paid, PamphletStatus::Published], true)) {
@@ -67,12 +71,73 @@ class PaymentController extends Controller
             ...$checkout,
             'paymentId' => $checkout['payment_id'],
             'amount_cents' => $checkout['amount_cents'],
+            'original_amount_cents' => $checkout['original_amount_cents'],
             'currency' => $checkout['currency'],
-            'autoSubmit' => true,
+            'autoSubmit' => false,
+            'discount' => $discountCodeService->checkoutPayload(
+                Transaction::query()->find($checkout['payment_id']),
+            ),
             'pamphlet' => $this->pamphletPreviewPayload($pamphlet),
             'pricing' => $this->memorialPricingPayload(),
             'canRegister' => Features::enabled(Features::registration()),
         ]);
+    }
+
+    public function applyDiscount(
+        Request $request,
+        MemorialPagePamphlet $pamphlet,
+        DiscountCodeService $discountCodeService,
+        PamphletPaymentFulfillmentService $fulfillmentService,
+    ): RedirectResponse {
+        abort_unless($pamphlet->isOwnedBy($request->user()), 403);
+        abort_if(
+            in_array($pamphlet->status, [PamphletStatus::Paid, PamphletStatus::Published], true),
+            422,
+            'This pamphlet has already been paid.',
+        );
+
+        $request->validate([
+            'code' => ['required', 'string', 'max:32'],
+        ]);
+
+        $package = SubscriptionPackage::selectedOnceOffPackage();
+        abort_if($package === null, 503, 'Memorial page pricing is not configured.');
+
+        $transaction = $this->pendingTransaction($pamphlet, $package);
+        $discountCodeService->apply($transaction, $request->string('code')->toString(), $package);
+        $transaction->refresh();
+
+        if ($transaction->amount_cents <= 0) {
+            $fulfillmentService->fulfill($pamphlet, $transaction, [
+                'payment_status' => 'COMPLETE',
+                'source' => 'discount_code_zero',
+            ]);
+
+            return redirect()
+                ->route('memorial.edit', $pamphlet)
+                ->with('status', 'Discount applied. Your memorial is ready — no payment required.');
+        }
+
+        return redirect()->route('payments.checkout', $pamphlet);
+    }
+
+    public function removeDiscount(
+        Request $request,
+        MemorialPagePamphlet $pamphlet,
+        DiscountCodeService $discountCodeService,
+    ): RedirectResponse {
+        abort_unless($pamphlet->isOwnedBy($request->user()), 403);
+
+        $transaction = $pamphlet->transactions()
+            ->where('status', TransactionStatus::Initiated)
+            ->latest()
+            ->first();
+
+        if ($transaction !== null) {
+            $discountCodeService->release($transaction);
+        }
+
+        return redirect()->route('payments.checkout', $pamphlet);
     }
 
     public function handleReturn(MemorialPagePamphlet $pamphlet): RedirectResponse
@@ -90,13 +155,20 @@ class PaymentController extends Controller
             ->with('status', $message);
     }
 
-    public function handleCancel(MemorialPagePamphlet $pamphlet): RedirectResponse
-    {
+    public function handleCancel(
+        MemorialPagePamphlet $pamphlet,
+        DiscountCodeService $discountCodeService,
+    ): RedirectResponse {
         abort_unless($pamphlet->isOwnedBy(request()->user()), 403);
 
-        $pamphlet->transactions()->latest()->first()?->update([
-            'status' => TransactionStatus::Cancelled,
-        ]);
+        $transaction = $pamphlet->transactions()->latest()->first();
+
+        if ($transaction !== null) {
+            $discountCodeService->release($transaction);
+            $transaction->update([
+                'status' => TransactionStatus::Cancelled,
+            ]);
+        }
 
         $pamphlet->update([
             'status' => PamphletStatus::Draft,
@@ -155,6 +227,8 @@ class PaymentController extends Controller
                 $request->string('pf_payment_id')->toString() ?: null,
             );
         } else {
+            app(DiscountCodeService::class)->release($transaction);
+
             $transaction->update([
                 'provider_payment_id' => $request->string('pf_payment_id')->toString() ?: null,
                 'status' => TransactionStatus::Failed,
@@ -171,6 +245,7 @@ class PaymentController extends Controller
      *     payload: array<string, mixed>,
      *     payment_id: string,
      *     amount_cents: int,
+     *     original_amount_cents: int,
      *     currency: string
      * }
      */
@@ -180,13 +255,27 @@ class PaymentController extends Controller
 
         abort_if($package === null, 503, 'Memorial page pricing is not configured.');
 
+        $transaction = $this->pendingTransaction($pamphlet, $package);
+
+        return [
+            'checkoutUrl' => $payfastService->checkoutUrl(),
+            'payload' => $payfastService->buildCheckoutPayload($pamphlet, $transaction),
+            'payment_id' => $transaction->id,
+            'amount_cents' => $transaction->amount_cents,
+            'original_amount_cents' => $transaction->original_amount_cents ?? $transaction->amount_cents,
+            'currency' => $transaction->currency,
+        ];
+    }
+
+    private function pendingTransaction(MemorialPagePamphlet $pamphlet, SubscriptionPackage $package): Transaction
+    {
         $transaction = $pamphlet->transactions()
             ->where('status', TransactionStatus::Initiated)
             ->latest()
             ->first();
 
         if ($transaction === null) {
-            $transaction = $pamphlet->transactions()->create([
+            return $pamphlet->transactions()->create([
                 'user_id' => request()->user()->id,
                 'type' => TransactionType::PamphletPurchase,
                 'provider' => 'payfast',
@@ -195,20 +284,17 @@ class PaymentController extends Controller
                 'currency' => $package->currency,
                 'status' => TransactionStatus::Initiated,
             ]);
-        } elseif ($transaction->amount_cents !== $package->price_cents || $transaction->currency !== $package->currency) {
+        }
+
+        if ($transaction->discount_code_id === null
+            && ($transaction->amount_cents !== $package->price_cents || $transaction->currency !== $package->currency)) {
             $transaction->update([
                 'amount_cents' => $package->price_cents,
                 'currency' => $package->currency,
             ]);
         }
 
-        return [
-            'checkoutUrl' => $payfastService->checkoutUrl(),
-            'payload' => $payfastService->buildCheckoutPayload($pamphlet, $transaction),
-            'payment_id' => $transaction->id,
-            'amount_cents' => $transaction->amount_cents,
-            'currency' => $transaction->currency,
-        ];
+        return $transaction->fresh();
     }
 
     /**

@@ -7,6 +7,8 @@ use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
 use App\Models\Subscription;
 use App\Models\SubscriptionPackage;
+use App\Models\Transaction;
+use App\Services\DiscountCodeService;
 use App\Services\PayfastService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -57,44 +59,79 @@ class SubscriptionController extends Controller
         return redirect()->route('subscriptions.checkout', $subscription);
     }
 
-    public function checkout(Request $request, Subscription $subscription, PayfastService $payfastService): InertiaResponse|RedirectResponse
-    {
+    public function checkout(
+        Request $request,
+        Subscription $subscription,
+        PayfastService $payfastService,
+        DiscountCodeService $discountCodeService,
+    ): InertiaResponse|RedirectResponse {
         abort_unless($subscription->user_id === $request->user()->id, 403);
 
         if ($subscription->isActive()) {
             return redirect()->route('subscriptions.show');
         }
 
+        $subscription->loadMissing('package');
+        $package = $subscription->package;
+        $transaction = $this->pendingTransaction($subscription, $package);
+
+        return Inertia::render('subscriptions/Checkout', [
+            'checkoutUrl' => $payfastService->checkoutUrl(),
+            'payload' => $payfastService->buildSubscriptionCheckoutPayload($subscription, $transaction),
+            'subscriptionId' => $subscription->id,
+            'packageName' => $package->name,
+            'amount_cents' => $transaction->amount_cents,
+            'original_amount_cents' => $transaction->original_amount_cents ?? $transaction->amount_cents,
+            'recurring_amount_cents' => $package->price_cents,
+            'currency' => $package->currency,
+            'billing_interval' => $package->billing_interval,
+            'autoSubmit' => false,
+            'discount' => $discountCodeService->checkoutPayload($transaction),
+            'canRegister' => Features::enabled(Features::registration()),
+        ]);
+    }
+
+    public function applyDiscount(
+        Request $request,
+        Subscription $subscription,
+        DiscountCodeService $discountCodeService,
+    ): RedirectResponse {
+        abort_unless($subscription->user_id === $request->user()->id, 403);
+        abort_if($subscription->isActive(), 400);
+
+        $request->validate([
+            'code' => ['required', 'string', 'max:32'],
+        ]);
+
+        $subscription->loadMissing('package');
+        $transaction = $this->pendingTransaction($subscription, $subscription->package);
+        $discountCodeService->apply(
+            $transaction,
+            $request->string('code')->toString(),
+            $subscription->package,
+            allowZeroPayable: false,
+        );
+
+        return redirect()->route('subscriptions.checkout', $subscription);
+    }
+
+    public function removeDiscount(
+        Request $request,
+        Subscription $subscription,
+        DiscountCodeService $discountCodeService,
+    ): RedirectResponse {
+        abort_unless($subscription->user_id === $request->user()->id, 403);
+
         $transaction = $subscription->transactions()
             ->where('status', TransactionStatus::Initiated)
             ->latest()
             ->first();
 
-        if ($transaction === null) {
-            $transaction = $subscription->transactions()->create([
-                'user_id' => $request->user()->id,
-                'type' => TransactionType::Subscription,
-                'provider' => 'payfast',
-                'merchant_reference' => $subscription->merchant_reference,
-                'amount_cents' => $subscription->package->price_cents,
-                'currency' => $subscription->package->currency,
-                'status' => TransactionStatus::Initiated,
-            ]);
+        if ($transaction !== null) {
+            $discountCodeService->release($transaction);
         }
 
-        $subscription->loadMissing('package');
-        $package = $subscription->package;
-
-        return Inertia::render('subscriptions/Checkout', [
-            'checkoutUrl' => $payfastService->checkoutUrl(),
-            'payload' => $payfastService->buildSubscriptionCheckoutPayload($subscription, $transaction),
-            'packageName' => $package->name,
-            'amount_cents' => $package->price_cents,
-            'currency' => $package->currency,
-            'billing_interval' => $package->billing_interval,
-            'autoSubmit' => true,
-            'canRegister' => Features::enabled(Features::registration()),
-        ]);
+        return redirect()->route('subscriptions.checkout', $subscription);
     }
 
     public function show(Request $request): InertiaResponse
@@ -133,16 +170,23 @@ class SubscriptionController extends Controller
         return redirect()->route('subscriptions.show')->with('status', $message);
     }
 
-    public function handleCancelled(Request $request, Subscription $subscription): RedirectResponse
-    {
+    public function handleCancelled(
+        Request $request,
+        Subscription $subscription,
+        DiscountCodeService $discountCodeService,
+    ): RedirectResponse {
         abort_unless($subscription->user_id === $request->user()->id, 403);
 
         if ($subscription->status === SubscriptionStatus::Pending) {
-            $subscription->transactions()
+            $transaction = $subscription->transactions()
                 ->where('status', TransactionStatus::Initiated)
                 ->latest()
-                ->first()
-                ?->update(['status' => TransactionStatus::Cancelled]);
+                ->first();
+
+            if ($transaction !== null) {
+                $discountCodeService->release($transaction);
+                $transaction->update(['status' => TransactionStatus::Cancelled]);
+            }
         }
 
         return redirect()->route('pricing')->with('status', 'Subscription checkout was cancelled.');
@@ -166,7 +210,8 @@ class SubscriptionController extends Controller
     public function handleNotify(
         Request $request,
         Subscription $subscription,
-        PayfastService $payfastService
+        PayfastService $payfastService,
+        DiscountCodeService $discountCodeService,
     ): Response {
         $payload = $request->all();
         $paramString = $payfastService->buildItnParameterString($payload);
@@ -185,7 +230,10 @@ class SubscriptionController extends Controller
         }
 
         $signatureValid = $payfastService->isValidItnSignature($payload, $paramString);
-        $amountValid = $payfastService->isValidItnAmount($transaction, $payload);
+        $isRenewal = $transaction->status === TransactionStatus::Complete;
+        $amountValid = $isRenewal
+            ? $this->isValidRenewalAmount($subscription, $payload)
+            : $payfastService->isValidItnAmount($transaction, $payload);
         $serverConfirmed = $payfastService->confirmItnWithPayfast($paramString);
 
         if (! $signatureValid || ! $amountValid || ! $serverConfirmed) {
@@ -203,6 +251,8 @@ class SubscriptionController extends Controller
         $status = $request->string('payment_status')->upper()->toString();
 
         if ($status !== 'COMPLETE') {
+            $discountCodeService->release($transaction);
+
             $transaction->update([
                 'provider_payment_id' => $request->string('pf_payment_id')->toString() ?: null,
                 'status' => TransactionStatus::Failed,
@@ -212,16 +262,16 @@ class SubscriptionController extends Controller
             return response('OK', 200);
         }
 
-        $isRenewal = $transaction->status === TransactionStatus::Complete;
-
         if ($isRenewal) {
+            $subscription->loadMissing('package');
+
             $transaction = $subscription->transactions()->create([
                 'user_id' => $subscription->user_id,
                 'type' => TransactionType::Subscription,
                 'provider' => 'payfast',
                 'merchant_reference' => (string) Str::ulid(),
-                'amount_cents' => $transaction->amount_cents,
-                'currency' => $transaction->currency,
+                'amount_cents' => $subscription->package->price_cents,
+                'currency' => $subscription->package->currency,
                 'status' => TransactionStatus::Initiated,
             ]);
         }
@@ -233,6 +283,10 @@ class SubscriptionController extends Controller
             'raw_payload' => $payload,
         ]);
 
+        if (! $isRenewal) {
+            $discountCodeService->consume($transaction->fresh(), $subscription->user);
+        }
+
         $interval = $subscription->package->billing_interval;
 
         $subscription->update([
@@ -243,5 +297,50 @@ class SubscriptionController extends Controller
         ]);
 
         return response('OK', 200);
+    }
+
+    private function pendingTransaction(Subscription $subscription, SubscriptionPackage $package): Transaction
+    {
+        $transaction = $subscription->transactions()
+            ->where('status', TransactionStatus::Initiated)
+            ->latest()
+            ->first();
+
+        if ($transaction === null) {
+            return $subscription->transactions()->create([
+                'user_id' => $subscription->user_id,
+                'type' => TransactionType::Subscription,
+                'provider' => 'payfast',
+                'merchant_reference' => $subscription->merchant_reference,
+                'amount_cents' => $package->price_cents,
+                'currency' => $package->currency,
+                'status' => TransactionStatus::Initiated,
+            ]);
+        }
+
+        if ($transaction->discount_code_id === null
+            && ($transaction->amount_cents !== $package->price_cents || $transaction->currency !== $package->currency)) {
+            $transaction->update([
+                'amount_cents' => $package->price_cents,
+                'currency' => $package->currency,
+            ]);
+        }
+
+        return $transaction->fresh();
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function isValidRenewalAmount(Subscription $subscription, array $payload): bool
+    {
+        if (! isset($payload['amount_gross'])) {
+            return false;
+        }
+
+        $subscription->loadMissing('package');
+        $expectedAmount = $subscription->package->price_cents / 100;
+
+        return abs($expectedAmount - (float) $payload['amount_gross']) <= 0.01;
     }
 }

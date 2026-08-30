@@ -81,6 +81,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/messages/{message}/reject', [MemorialPageMessageModerationController::class, 'reject'])->name('messages.reject');
 
     Route::get('/payments/{pamphlet}/checkout', [PaymentController::class, 'checkout'])->name('payments.checkout');
+    Route::post('/payments/{pamphlet}/discount', [PaymentController::class, 'applyDiscount'])->name('payments.discount.apply');
+    Route::delete('/payments/{pamphlet}/discount', [PaymentController::class, 'removeDiscount'])->name('payments.discount.remove');
     Route::get('/payments/{pamphlet}/return', [PaymentController::class, 'handleReturn'])->name('payments.return');
     Route::get('/payments/{pamphlet}/cancel', [PaymentController::class, 'handleCancel'])->name('payments.cancel');
 
@@ -88,6 +90,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/subscriptions/start', [SubscriptionController::class, 'start'])->name('subscriptions.start');
     Route::post('/subscriptions/{package}', [SubscriptionController::class, 'store'])->name('subscriptions.store');
     Route::get('/subscriptions/{subscription}/checkout', [SubscriptionController::class, 'checkout'])->name('subscriptions.checkout');
+    Route::post('/subscriptions/{subscription}/discount', [SubscriptionController::class, 'applyDiscount'])->name('subscriptions.discount.apply');
+    Route::delete('/subscriptions/{subscription}/discount', [SubscriptionController::class, 'removeDiscount'])->name('subscriptions.discount.remove');
     Route::get('/subscriptions/{subscription}/return', [SubscriptionController::class, 'handleReturn'])->name('subscriptions.return');
     Route::get('/subscriptions/{subscription}/cancelled', [SubscriptionController::class, 'handleCancelled'])->name('subscriptions.cancelled');
     Route::delete('/subscriptions/{subscription}', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');

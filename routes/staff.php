@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Staff\Commerce\DiscountCodeController;
 use App\Http\Controllers\Staff\Commerce\PlatformBankDetailController;
 use App\Http\Controllers\Staff\Commerce\ServiceProviderCreditPackageController;
 use App\Http\Controllers\Staff\Commerce\ServiceProviderCreditPurchaseController;
@@ -71,6 +72,9 @@ Route::resource('content/pamphlet-backgrounds', MemorialPagePamphletBackgroundCo
     ->names('content.pamphlet-backgrounds');
 
 Route::resource('commerce/subscription-packages', SubscriptionPackageController::class)->names('commerce.subscription-packages');
+Route::resource('commerce/discount-codes', DiscountCodeController::class)
+    ->except(['edit', 'update'])
+    ->names('commerce.discount-codes');
 Route::resource('commerce/credit-packages', ServiceProviderCreditPackageController::class)
     ->parameters(['credit-packages' => 'creditPackage'])
     ->names('commerce.credit-packages');
