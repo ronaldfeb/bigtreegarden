@@ -5,7 +5,7 @@ import AppContent from '@/components/AppContent.vue';
 import AppShell from '@/components/AppShell.vue';
 import AppSidebarHeader from '@/components/AppSidebarHeader.vue';
 import StaffSidebar from '@/components/staff/StaffSidebar.vue';
-import { hideTawkToWidget } from '@/lib/tawk';
+import { shutdownIntercom } from '@/lib/intercom';
 import type { BreadcrumbItem } from '@/types';
 import type { StaffUser } from '@/types/staff';
 
@@ -21,7 +21,7 @@ const page = usePage<{ staffUser?: StaffUser }>();
 const staffUser = computed(() => page.props.staffUser);
 
 onMounted(() => {
-    hideTawkToWidget();
+    shutdownIntercom();
 });
 </script>
 

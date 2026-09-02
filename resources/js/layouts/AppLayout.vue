@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TawkToWidget from '@/components/TawkToWidget.vue';
+import IntercomWidget from '@/components/IntercomWidget.vue';
 import AppLayout from '@/layouts/app/AppHeaderLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 
@@ -16,5 +16,5 @@ withDefaults(defineProps<Props>(), {
     <AppLayout :breadcrumbs="breadcrumbs">
         <slot />
     </AppLayout>
-    <TawkToWidget />
+    <IntercomWidget />
 </template>

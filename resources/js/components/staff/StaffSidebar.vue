@@ -88,7 +88,7 @@ const props = defineProps<{
 
 const { isCurrentUrl, isCurrentOrParentUrl } = useCurrentUrl();
 
-const TAWK_DASHBOARD_URL = 'https://dashboard.tawk.to/#/dashboard';
+const INTERCOM_INBOX_URL = 'https://app.intercom.com/a/apps/a8f6x7iy/inbox';
 
 const sections = computed((): NavSection[] => {
     const role = props.staffUser.role;
@@ -105,7 +105,7 @@ const sections = computed((): NavSection[] => {
                 },
                 {
                     title: 'Live chat',
-                    href: TAWK_DASHBOARD_URL,
+                    href: INTERCOM_INBOX_URL,
                     icon: MessageCircle,
                     external: true,
                 },
