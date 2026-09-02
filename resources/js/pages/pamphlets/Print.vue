@@ -3,7 +3,6 @@ import { Head, Link } from '@inertiajs/vue3';
 import PamphletPreview from '@/components/pamphlets/PamphletPreview.vue';
 import type {PamphletPreviewData} from '@/components/pamphlets/PamphletPreview.vue';
 import { Button } from '@/components/ui/button';
-
 defineProps<{
     pamphlet: PamphletPreviewData & { id: string };
 }>();

@@ -547,6 +547,90 @@ it('prevents non-owners from opening the print view', function () {
     $response->assertForbidden();
 });
 
+it('prevents owners from opening the print view when pamphlet is unpaid', function () {
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
+    ]);
+
+    $response = $this->actingAs($pamphlet->owner())->get(route('pamphlets.print', $pamphlet));
+
+    $response->assertForbidden();
+});
+
+it('omits qr code on pamphlet review page when unpaid', function () {
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
+    ]);
+
+    $response = $this->actingAs($pamphlet->owner())->get(route('pamphlets.show', $pamphlet));
+
+    $response->assertSuccessful();
+    $response->assertInertia(fn ($page) => $page
+        ->component('pamphlets/Show')
+        ->where('pamphlet.pamphlet_qr_code', null)
+    );
+});
+
+it('allows owner to view unpaid memorial page with pending payment flag', function () {
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
+    ]);
+
+    $response = $this->actingAs($pamphlet->owner())->get(route('memorial.public.show', $pamphlet->public_slug));
+
+    $response->assertSuccessful();
+    $response->assertInertia(fn ($page) => $page
+        ->component('memorial/PublicShow')
+        ->where('pendingPayment', true)
+        ->where('pamphlet.pamphlet_qr_code', null)
+    );
+});
+
+it('returns not found for unpaid memorial page for non-owners', function () {
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
+    ]);
+    $otherUser = User::factory()->create();
+
+    $this->actingAs($otherUser)
+        ->get(route('memorial.public.show', $pamphlet->public_slug))
+        ->assertNotFound();
+
+    $this->get(route('memorial.public.show', $pamphlet->public_slug))
+        ->assertNotFound();
+});
+
+it('allows owner to open memorial editor when pamphlet is unpaid', function () {
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
+    ]);
+
+    $response = $this->actingAs($pamphlet->owner())->get(route('memorial.edit', $pamphlet));
+
+    $response->assertSuccessful();
+    $response->assertInertia(fn ($page) => $page
+        ->component('memorial/Edit')
+        ->where('pendingPayment', true)
+        ->where('pamphlet.pamphlet_qr_code', null)
+    );
+});
+
+it('prevents memorial page update when pamphlet is unpaid', function () {
+    $pamphlet = MemorialPagePamphlet::factory()->create([
+        'status' => PamphletStatus::PendingPayment,
+    ]);
+
+    $response = $this->actingAs($pamphlet->owner())->patch("/pamphlets/{$pamphlet->id}/memorial", [
+        'font_family' => 'Georgia',
+        'is_bold' => false,
+        'is_italic' => false,
+        'date_format' => 'd M Y',
+        'sections' => [],
+    ]);
+
+    $response->assertForbidden();
+});
+
 it('creates a person of interest qr code when opening print view if missing', function () {
     $pamphlet = MemorialPagePamphlet::factory()->create([
         'status' => PamphletStatus::Published,

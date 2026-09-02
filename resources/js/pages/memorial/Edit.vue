@@ -2,6 +2,7 @@
 import { Form, Head } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
+import PamphletPendingPaymentNotice from '@/components/pamphlets/PamphletPendingPaymentNotice.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,6 +32,8 @@ const props = defineProps<{
             date_format: string;
         } | null;
     };
+    pendingPayment?: boolean;
+    continuePaymentUrl?: string;
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -103,6 +106,13 @@ const setImageFallback = (event: Event): void => {
     <Head title="Memorial Editor" />
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="mx-auto w-full max-w-6xl p-4">
+            <PamphletPendingPaymentNotice
+                v-if="pendingPayment"
+                :pamphlet-id="pamphlet.id"
+                :continue-url="continuePaymentUrl"
+                class="mb-6"
+            />
+
             <h1 class="mb-6 font-semibold text-2xl">Complete your memorial page</h1>
             <Form
                 :action="`/pamphlets/${pamphlet.id}/memorial`"
@@ -111,6 +121,7 @@ const setImageFallback = (event: Event): void => {
                 enctype="multipart/form-data"
                 #default="{ errors, processing }"
             >
+                <fieldset :disabled="pendingPayment" class="space-y-6 disabled:opacity-60">
                 <input type="hidden" name="_method" value="patch" />
                 <input
                     v-for="imageId in removedImageIds"
@@ -316,8 +327,9 @@ const setImageFallback = (event: Event): void => {
                         </div>
                     </div>
                 </section>
+                </fieldset>
 
-                <Button type="submit" :disabled="processing">Publish memorial page</Button>
+                <Button type="submit" :disabled="processing || pendingPayment">Publish memorial page</Button>
             </Form>
         </div>
     </AppLayout>

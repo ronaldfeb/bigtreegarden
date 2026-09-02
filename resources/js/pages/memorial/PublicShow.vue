@@ -1,46 +1,55 @@
 <script setup lang="ts">
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
+import PamphletPendingPaymentNotice from '@/components/pamphlets/PamphletPendingPaymentNotice.vue';
 
-const props = defineProps<{
-    pamphlet: {
-        heading: string;
-        person_full_name: string;
-        date_of_birth: string;
-        date_of_passing: string;
-        date_format: string;
-        memorial_page?: {
-            sections?: Array<{
-                id: string;
-                title: string;
-                body: string | null;
-            }>;
-            gallery_images?: Array<{
-                id: string;
-                image_path: string;
-            }>;
-        } | null;
-        flower_messages?: Array<{
+const props = withDefaults(
+    defineProps<{
+        pamphlet: {
             id: string;
-            author_name: string | null;
-            body: string | null;
-            created_at: string | null;
-        }>;
-        memorial_sites?: Array<{
-            latitude: number;
-            longitude: number;
-            geofence_radius_m: number;
-        }>;
-        active_day?: {
-            is_active_day: boolean;
-            live_comments_enabled: boolean;
-            live_url: string;
+            heading: string;
+            person_full_name: string;
+            date_of_birth: string;
+            date_of_passing: string;
+            date_format: string;
+            memorial_page?: {
+                sections?: Array<{
+                    id: string;
+                    title: string;
+                    body: string | null;
+                }>;
+                gallery_images?: Array<{
+                    id: string;
+                    image_path: string;
+                }>;
+            } | null;
+            flower_messages?: Array<{
+                id: string;
+                author_name: string | null;
+                body: string | null;
+                created_at: string | null;
+            }>;
+            memorial_sites?: Array<{
+                latitude: number;
+                longitude: number;
+                geofence_radius_m: number;
+            }>;
+            active_day?: {
+                is_active_day: boolean;
+                live_comments_enabled: boolean;
+                live_url: string;
+            };
+            flowers_store_url?: string;
+            login_url?: string;
+            register_url?: string;
         };
-        flowers_store_url?: string;
-        login_url?: string;
-        register_url?: string;
-    };
-}>();
+        pendingPayment?: boolean;
+        continuePaymentUrl?: string;
+    }>(),
+    {
+        pendingPayment: false,
+    },
+);
 
 const normalizedDateFormat = computed(() => props.pamphlet.date_format || 'd M Y');
 const memorialSections = computed(() =>
@@ -243,6 +252,12 @@ const formatFlowerDate = (value: string | null): string => {
     <Head :title="pamphlet.person_full_name" />
     <div class="min-h-screen bg-background px-4 py-6 md:px-8 md:py-8" data-surface="memorial">
         <div class="mx-auto max-w-[57.5rem] space-y-6">
+            <PamphletPendingPaymentNotice
+                v-if="pendingPayment"
+                :pamphlet-id="pamphlet.id"
+                :continue-url="continuePaymentUrl"
+            />
+
             <header class="space-y-3 border-b border-border/40 pb-6">
                 <p class="text-eyebrow text-gold-light">{{ pamphlet.heading }}</p>
                 <h1 class="text-balance text-display text-4xl md:text-5xl">
@@ -261,14 +276,14 @@ const formatFlowerDate = (value: string | null): string => {
             </div>
 
             <div
-                v-if="isActiveDay && showSilentBanner"
+                v-if="isActiveDay && showSilentBanner && !pendingPayment"
                 class="rounded-xl border border-gold/40 bg-gold/10 p-4 text-center text-foreground text-sm"
             >
                 Today is the day of the service. Remember to switch your phone to silent.
             </div>
 
             <div
-                v-if="isActiveDay && activeDay?.live_comments_enabled"
+                v-if="isActiveDay && activeDay?.live_comments_enabled && !pendingPayment"
                 class="rounded-xl border border-border bg-card p-4 text-center text-sm shadow-warm-sm"
             >
                 <span class="text-muted-foreground">The live remembrance feed is open today.</span>
@@ -334,7 +349,7 @@ const formatFlowerDate = (value: string | null): string => {
                 </details>
             </section>
 
-            <section class="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-warm-sm md:p-8">
+            <section v-if="!pendingPayment" class="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-warm-sm md:p-8">
                 <div class="space-y-1">
                     <p class="text-eyebrow text-gold">Flowers</p>
                     <h2 class="text-heading text-xl">Leave flowers at the memorial site</h2>

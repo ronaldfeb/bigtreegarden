@@ -114,6 +114,11 @@ class MemorialPagePamphlet extends Model
             ->contains(fn (ServiceProviderUser $membership): bool => $membership->user_id === $user->id);
     }
 
+    public function isPaid(): bool
+    {
+        return in_array($this->status, [PamphletStatus::Paid, PamphletStatus::Published], true);
+    }
+
     public function getPersonFullNameAttribute(): ?string
     {
         return $this->memorialPage?->personOfInterest?->display_name;

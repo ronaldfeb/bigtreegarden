@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Form, Head, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { isPamphletPaid, isPamphletUnpaid } from '@/lib/pamphletStatus';
 import { dashboard } from '@/routes';
 import { approve, reject } from '@/routes/messages';
 import type { BreadcrumbItem } from '@/types';
@@ -149,8 +150,11 @@ const breadcrumbs: BreadcrumbItem[] = [
                         <div class="space-y-2 p-4">
                             <div class="flex items-start justify-between gap-2">
                                 <h3 class="line-clamp-2 font-semibold text-base">{{ pamphlet.heading }}</h3>
-                                <span class="rounded-full border border-border px-2 py-0.5 text-xs capitalize">
-                                    {{ pamphlet.status }}
+                                <span
+                                    class="rounded-full border border-border px-2 py-0.5 text-xs capitalize"
+                                    :class="isPamphletUnpaid(pamphlet.status) ? 'border-amber-200 bg-amber-50 text-amber-900' : ''"
+                                >
+                                    {{ isPamphletUnpaid(pamphlet.status) ? 'Pending payment' : pamphlet.status.replaceAll('_', ' ') }}
                                 </span>
                             </div>
                             <p class="text-muted-foreground text-sm">{{ pamphlet.person_full_name }}</p>
@@ -162,7 +166,11 @@ const breadcrumbs: BreadcrumbItem[] = [
                                     <Link :href="`/pamphlets/${pamphlet.id}`" class="text-primary text-sm hover:underline">
                                         View details
                                     </Link>
-                                    <Link :href="`/pamphlets/${pamphlet.id}/print`" class="text-primary text-sm hover:underline">
+                                    <Link
+                                        v-if="isPamphletPaid(pamphlet.status)"
+                                        :href="`/pamphlets/${pamphlet.id}/print`"
+                                        class="text-primary text-sm hover:underline"
+                                    >
                                         Print
                                     </Link>
                                 </div>

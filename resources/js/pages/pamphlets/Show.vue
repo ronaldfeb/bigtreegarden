@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import PamphletPendingPaymentNotice from '@/components/pamphlets/PamphletPendingPaymentNotice.vue';
 import PamphletPreview from '@/components/pamphlets/PamphletPreview.vue';
 import { Button } from '@/components/ui/button';
 import MarketingLayout from '@/layouts/marketing/MarketingLayout.vue';
+import { isPamphletPaid, isPamphletUnpaid } from '@/lib/pamphletStatus';
 
 const props = withDefaults(
     defineProps<{
@@ -42,13 +44,9 @@ const props = withDefaults(
     },
 );
 
-const isUnpaid = computed(
-    () => props.pamphlet.status === 'draft' || props.pamphlet.status === 'pending_payment',
-);
+const isUnpaid = computed(() => isPamphletUnpaid(props.pamphlet.status));
 
-const isPaid = computed(
-    () => props.pamphlet.status === 'paid' || props.pamphlet.status === 'published',
-);
+const isPaid = computed(() => isPamphletPaid(props.pamphlet.status));
 
 const formattedPrice = computed(() => {
     if (props.pricing === null) {
@@ -70,6 +68,12 @@ const statusLabel = computed(() => props.pamphlet.status.replaceAll('_', ' '));
 
     <MarketingLayout :can-register="canRegister">
         <div class="mx-auto w-full min-w-0 max-w-6xl overflow-x-hidden px-4 py-8 sm:px-6 lg:px-8">
+            <PamphletPendingPaymentNotice
+                v-if="isUnpaid"
+                :pamphlet-id="pamphlet.id"
+                class="mb-8"
+            />
+
             <h1 class="mb-2 font-semibold text-2xl">Review your pamphlet</h1>
             <p class="mb-8 text-muted-foreground text-sm">
                 Confirm the design, then continue to secure payment with PayFast.
@@ -77,7 +81,7 @@ const statusLabel = computed(() => props.pamphlet.status.replaceAll('_', ' '));
 
             <div class="grid gap-8 lg:grid-cols-2 lg:items-start">
                 <div>
-                    <PamphletPreview :pamphlet="pamphlet" />
+                    <PamphletPreview :pamphlet="pamphlet" :show-qr-code="isPaid" />
                 </div>
 
                 <aside class="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">

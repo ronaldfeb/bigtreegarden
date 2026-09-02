@@ -33,10 +33,12 @@ const props = withDefaults(
         pamphlet: PamphletPreviewData;
         compact?: boolean;
         printable?: boolean;
+        showQrCode?: boolean;
     }>(),
     {
         compact: false,
         printable: false,
+        showQrCode: true,
     },
 );
 
@@ -117,7 +119,7 @@ const formattedDateRange = computed(
                 {{ pamphlet.short_text }}
             </p>
 
-            <div class="absolute bottom-[3%] left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5">
+            <div v-if="showQrCode" class="absolute bottom-[3%] left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5">
                 <div class="rounded-lg bg-white p-2 shadow-sm">
                     <img
                         v-if="pamphlet.pamphlet_qr_code?.image_path"

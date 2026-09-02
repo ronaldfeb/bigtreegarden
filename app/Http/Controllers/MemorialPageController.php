@@ -20,7 +20,6 @@ class MemorialPageController extends Controller
     public function edit(MemorialPagePamphlet $pamphlet): Response
     {
         abort_unless($pamphlet->canBeManagedBy(request()->user()), 403);
-        abort_unless(in_array($pamphlet->status, [PamphletStatus::Paid, PamphletStatus::Published], true), 403);
 
         $pamphlet->load([
             'style',
@@ -37,12 +36,15 @@ class MemorialPageController extends Controller
 
         return Inertia::render('memorial/Edit', [
             'pamphlet' => $this->pamphletEditPayload($pamphlet),
+            'pendingPayment' => ! $pamphlet->isPaid(),
+            'continuePaymentUrl' => route('pamphlets.continue', $pamphlet),
         ]);
     }
 
     public function update(UpdateMemorialPageRequest $request, MemorialPagePamphlet $pamphlet): RedirectResponse
     {
         abort_unless($pamphlet->canBeManagedBy(request()->user()), 403);
+        abort_unless($pamphlet->isPaid(), 403, 'This memorial page is pending payment.');
 
         $validated = $request->validated();
         $pamphlet->style()->updateOrCreate([], [
@@ -170,14 +172,21 @@ class MemorialPageController extends Controller
                 'personOfInterest',
             ])
             ->where('public_slug', $slug)
-            ->whereHas('pamphlet', function ($query): void {
-                $query->whereIn('status', [PamphletStatus::Paid, PamphletStatus::Published]);
-            })
             ->firstOrFail();
 
         $pamphlet = $memorialPage->pamphlet;
 
         abort_if($pamphlet === null, 404);
+
+        if (! $pamphlet->isPaid()) {
+            abort_unless($pamphlet->canBeManagedBy(request()->user()), 404);
+
+            return Inertia::render('memorial/PublicShow', [
+                'pamphlet' => $this->publicShowPayload($pamphlet, $memorialPage),
+                'pendingPayment' => true,
+                'continuePaymentUrl' => route('pamphlets.continue', $pamphlet),
+            ]);
+        }
 
         $memorialPage->setRelation(
             'images',
@@ -186,6 +195,7 @@ class MemorialPageController extends Controller
 
         return Inertia::render('memorial/PublicShow', [
             'pamphlet' => $this->publicShowPayload($pamphlet, $memorialPage),
+            'pendingPayment' => false,
         ]);
     }
 
@@ -203,7 +213,7 @@ class MemorialPageController extends Controller
             'person_full_name' => $pamphlet->person_full_name,
             'status' => $pamphlet->status?->value ?? $pamphlet->status,
             'pamphlet_style' => $pamphlet->style,
-            'pamphlet_qr_code' => $personOfInterest ? [
+            'pamphlet_qr_code' => $pamphlet->isPaid() && $personOfInterest ? [
                 'target_url' => route('memorial.public.show', $memorialPage->public_slug),
                 'image_path' => $personOfInterest->qr_code_path,
             ] : null,
@@ -256,7 +266,7 @@ class MemorialPageController extends Controller
             'image_crop_mode' => $pamphlet->image_crop_mode,
             'public_slug' => $memorialPage->public_slug,
             'pamphlet_style' => $pamphlet->style,
-            'pamphlet_qr_code' => $memorialPage->personOfInterest ? [
+            'pamphlet_qr_code' => $pamphlet->isPaid() && $memorialPage->personOfInterest ? [
                 'target_url' => route('memorial.public.show', $memorialPage->public_slug),
                 'image_path' => $memorialPage->personOfInterest->qr_code_path,
             ] : null,

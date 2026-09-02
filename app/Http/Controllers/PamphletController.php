@@ -204,6 +204,7 @@ class PamphletController extends Controller
     public function print(MemorialPagePamphlet $pamphlet, QrCodeService $qrCodeService): Response
     {
         abort_unless($pamphlet->canBeManagedBy(request()->user()), 403);
+        abort_unless($pamphlet->isPaid(), 403, 'This pamphlet is pending payment.');
 
         $personOfInterest = $pamphlet->memorialPage?->personOfInterest;
         $targetUrl = route('memorial.public.show', $pamphlet->public_slug);
@@ -273,7 +274,7 @@ class PamphletController extends Controller
             'dates_color' => $pamphlet->style?->dates_color ?? '#000000',
             'layout' => PamphletLayout::normalize($pamphlet->style?->layout),
             'transactions' => $pamphlet->transactions,
-            'pamphlet_qr_code' => $pamphlet->memorialPage?->personOfInterest ? [
+            'pamphlet_qr_code' => $pamphlet->isPaid() && $pamphlet->memorialPage?->personOfInterest ? [
                 'target_url' => route('memorial.public.show', $pamphlet->public_slug),
                 'image_path' => $pamphlet->memorialPage->personOfInterest->qr_code_path,
             ] : null,
