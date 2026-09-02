@@ -69,6 +69,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Business Timezone
+    |--------------------------------------------------------------------------
+    |
+    | Datetime-local values entered in the staff portal are interpreted in this
+    | timezone before being stored in UTC.
+    |
+    */
+
+    'business_timezone' => env('APP_BUSINESS_TIMEZONE', 'Africa/Johannesburg'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

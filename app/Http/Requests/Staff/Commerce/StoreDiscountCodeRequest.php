@@ -7,6 +7,7 @@ use App\Models\ServiceProviderCreditPackage;
 use App\Models\SubscriptionPackage;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -21,6 +22,8 @@ class StoreDiscountCodeRequest extends FormRequest
     {
         $this->merge([
             'applies_to_all' => $this->boolean('applies_to_all'),
+            'starts_at' => $this->parseBusinessDatetime($this->input('starts_at')),
+            'ends_at' => $this->parseBusinessDatetime($this->input('ends_at')),
         ]);
 
         if ($this->boolean('applies_to_all')) {
@@ -87,5 +90,24 @@ class StoreDiscountCodeRequest extends FormRequest
                 $validator->errors()->add('discountable_id', 'Select a valid package.');
             }
         });
+    }
+
+    private function parseBusinessDatetime(mixed $value): mixed
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return $value;
+        }
+
+        if (! str_contains($value, 'T')) {
+            return $value;
+        }
+
+        return Carbon::createFromFormat(
+            'Y-m-d\TH:i',
+            $value,
+            config('app.business_timezone', 'Africa/Johannesburg'),
+        )
+            ->timezone(config('app.timezone'))
+            ->toDateTimeString();
     }
 }

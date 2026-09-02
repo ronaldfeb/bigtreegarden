@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 #[Fillable([
     'code',
@@ -112,23 +113,44 @@ class DiscountCode extends Model
 
     public function isUsable(?Transaction $forTransaction = null): bool
     {
+        try {
+            $this->assertUsable($forTransaction);
+
+            return true;
+        } catch (ValidationException) {
+            return false;
+        }
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    public function assertUsable(?Transaction $forTransaction = null): void
+    {
         if ($this->used_at !== null) {
-            return false;
+            throw ValidationException::withMessages([
+                'code' => 'This discount code has already been used.',
+            ]);
         }
 
-        $now = now();
-
-        if ($this->starts_at->isFuture() || $this->ends_at->isPast()) {
-            return false;
+        if ($this->starts_at->isFuture()) {
+            throw ValidationException::withMessages([
+                'code' => 'This discount code is not active yet.',
+            ]);
         }
 
-        if ($this->reserved_transaction_id !== null) {
-            if ($forTransaction === null || $this->reserved_transaction_id !== $forTransaction->id) {
-                return false;
-            }
+        if ($this->ends_at->isPast()) {
+            throw ValidationException::withMessages([
+                'code' => 'This discount code has expired.',
+            ]);
         }
 
-        return true;
+        if ($this->reserved_transaction_id !== null
+            && ($forTransaction === null || $this->reserved_transaction_id !== $forTransaction->id)) {
+            throw ValidationException::withMessages([
+                'code' => 'This discount code is reserved on another checkout.',
+            ]);
+        }
     }
 
     public function appliesTo(Model $target): bool
@@ -138,8 +160,75 @@ class DiscountCode extends Model
                 || $target instanceof ServiceProviderCreditPackage;
         }
 
-        return $this->discountable_type === $target::class
-            && $this->discountable_id === $target->getKey();
+        if ($this->discountable_type !== $target::class) {
+            return false;
+        }
+
+        if ($this->discountable_id === $target->getKey()) {
+            return true;
+        }
+
+        if ($target instanceof SubscriptionPackage) {
+            $configuredPackage = $this->relationLoaded('discountable')
+                ? $this->discountable
+                : $this->discountable()->first();
+
+            if ($configuredPackage instanceof SubscriptionPackage) {
+                return $this->subscriptionPackagesMatch($configuredPackage, $target);
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    public function assertAppliesTo(Model $target): void
+    {
+        if ($this->appliesTo($target)) {
+            return;
+        }
+
+        $targetLabel = match (true) {
+            $target instanceof SubscriptionPackage => $target->name,
+            $target instanceof ServiceProviderCreditPackage => $target->name,
+            default => 'this purchase',
+        };
+
+        if ($this->applies_to_all) {
+            throw ValidationException::withMessages([
+                'code' => 'This discount code does not apply to this purchase.',
+            ]);
+        }
+
+        $configuredPackage = $this->relationLoaded('discountable')
+            ? $this->discountable
+            : $this->discountable()->first();
+
+        $configuredLabel = match (true) {
+            $configuredPackage instanceof SubscriptionPackage,
+            $configuredPackage instanceof ServiceProviderCreditPackage => $configuredPackage->name,
+            default => 'another package',
+        };
+
+        throw ValidationException::withMessages([
+            'code' => "This discount code applies to {$configuredLabel}, not {$targetLabel}.",
+        ]);
+    }
+
+    private function subscriptionPackagesMatch(SubscriptionPackage $configured, SubscriptionPackage $target): bool
+    {
+        if ($configured->slug === $target->slug) {
+            return true;
+        }
+
+        $equivalentSlugs = [
+            'memorial-page' => 'funeral-memorial',
+        ];
+
+        return ($equivalentSlugs[$configured->slug] ?? null) === $target->slug
+            || ($equivalentSlugs[$target->slug] ?? null) === $configured->slug;
     }
 
     public function discountCents(int $listPriceCents): int

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import StaffLayout from '@/layouts/staff/StaffLayout.vue';
-import { randInputToCents } from '@/lib/utils';
+import { randInputToCents, toDatetimeLocalInput } from '@/lib/utils';
 import { index, store } from '@/routes/staff/commerce/discount-codes';
 
 type TargetGroup = {
@@ -24,6 +24,8 @@ const discountType = ref<'percent' | 'fixed'>('percent');
 const appliesToAll = ref(true);
 const amountRand = ref('');
 const target = ref(props.targets[0]?.options[0]?.value ?? '');
+const defaultStartsAt = toDatetimeLocalInput(new Date());
+const defaultEndsAt = toDatetimeLocalInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
 
 const amountCents = computed(() => randInputToCents(amountRand.value));
 </script>
@@ -76,12 +78,24 @@ const amountCents = computed(() => randInputToCents(amountRand.value));
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div class="grid gap-2">
                             <Label for="starts_at">Starts at</Label>
-                            <Input id="starts_at" name="starts_at" type="datetime-local" required />
+                            <Input
+                                id="starts_at"
+                                name="starts_at"
+                                type="datetime-local"
+                                :default-value="defaultStartsAt"
+                                required
+                            />
                             <InputError :message="errors.starts_at" />
                         </div>
                         <div class="grid gap-2">
                             <Label for="ends_at">Ends at</Label>
-                            <Input id="ends_at" name="ends_at" type="datetime-local" required />
+                            <Input
+                                id="ends_at"
+                                name="ends_at"
+                                type="datetime-local"
+                                :default-value="defaultEndsAt"
+                                required
+                            />
                             <InputError :message="errors.ends_at" />
                         </div>
                     </div>

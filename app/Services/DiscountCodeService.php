@@ -32,17 +32,8 @@ class DiscountCodeService
             ]);
         }
 
-        if (! $discountCode->isUsable($transaction)) {
-            throw ValidationException::withMessages([
-                'code' => 'This discount code is not available.',
-            ]);
-        }
-
-        if (! $discountCode->appliesTo($target)) {
-            throw ValidationException::withMessages([
-                'code' => 'This discount code does not apply to this purchase.',
-            ]);
-        }
+        $discountCode->assertUsable($transaction);
+        $discountCode->assertAppliesTo($target);
 
         return $discountCode;
     }
@@ -71,17 +62,8 @@ class DiscountCodeService
                 ]);
             }
 
-            if (! $discountCode->isUsable($transaction)) {
-                throw ValidationException::withMessages([
-                    'code' => 'This discount code is not available.',
-                ]);
-            }
-
-            if (! $discountCode->appliesTo($target)) {
-                throw ValidationException::withMessages([
-                    'code' => 'This discount code does not apply to this purchase.',
-                ]);
-            }
+            $discountCode->assertUsable($transaction);
+            $discountCode->assertAppliesTo($target);
 
             $listPrice = $transaction->original_amount_cents ?? $transaction->amount_cents;
             $payable = $discountCode->payableCents($listPrice);

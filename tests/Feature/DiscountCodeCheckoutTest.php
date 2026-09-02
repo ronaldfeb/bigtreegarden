@@ -326,6 +326,30 @@ it('discounts provider credit PayFast checkout', function () {
         ->and($serviceProvider->fresh()->credits_remaining)->toBe(5);
 });
 
+it('applies legacy memorial-page codes to funeral-memorial checkout', function () {
+    SubscriptionPackage::factory()->create([
+        'slug' => 'funeral-memorial',
+        'billing_interval' => 'once_off',
+        'price_cents' => 69900,
+        'is_active' => true,
+    ]);
+
+    $legacyPackage = SubscriptionPackage::factory()->create([
+        'slug' => 'memorial-page',
+        'billing_interval' => 'once_off',
+        'price_cents' => 69900,
+        'is_active' => false,
+    ]);
+    $pamphlet = MemorialPagePamphlet::factory()->create(['status' => PamphletStatus::PendingPayment]);
+    $code = DiscountCode::factory()->forPackage($legacyPackage)->create(['percent' => 10]);
+
+    $this->actingAs($pamphlet->owner())->get(route('payments.checkout', $pamphlet))->assertOk();
+
+    $this->actingAs($pamphlet->owner())
+        ->post(route('payments.discount.apply', $pamphlet), ['code' => $code->formattedCode()])
+        ->assertRedirect(route('payments.checkout', $pamphlet));
+});
+
 it('fulfills a zero amount pamphlet purchase without PayFast', function () {
     SubscriptionPackage::factory()->create([
         'slug' => 'funeral-memorial',

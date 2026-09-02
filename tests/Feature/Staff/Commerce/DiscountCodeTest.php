@@ -113,3 +113,37 @@ it('does not void a used discount code', function () {
     expect($code->fresh())->not->toBeNull()
         ->and($code->fresh()->trashed())->toBeFalse();
 });
+
+it('only offers active packages when creating discount codes', function () {
+    SubscriptionPackage::factory()->create([
+        'slug' => 'legacy-package',
+        'name' => 'Legacy Package',
+        'is_active' => false,
+    ]);
+
+    $this->actingAs(makeStaffUser())
+        ->get(route('staff.commerce.discount-codes.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('staff/commerce/discount-codes/Create')
+            ->where('targets', fn ($targets) => collect($targets)
+                ->flatMap(fn (array $group) => $group['options'])
+                ->every(fn (array $option) => ! str_contains($option['label'], 'Legacy Package'))));
+});
+
+it('stores staff datetime-local values using the business timezone', function () {
+    $this->actingAs(makeStaffUser())
+        ->post(route('staff.commerce.discount-codes.store'), [
+            'discount_type' => 'percent',
+            'percent' => 10,
+            'starts_at' => now('Africa/Johannesburg')->subMinute()->format('Y-m-d\TH:i'),
+            'ends_at' => now('Africa/Johannesburg')->addWeek()->format('Y-m-d\TH:i'),
+            'applies_to_all' => '1',
+        ])
+        ->assertRedirect();
+
+    $code = DiscountCode::query()->firstOrFail();
+
+    expect($code->isUsable())->toBeTrue()
+        ->and($code->starts_at->lte(now()))->toBeTrue();
+});

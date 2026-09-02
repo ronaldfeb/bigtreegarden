@@ -153,6 +153,7 @@ class DiscountCodeController extends Controller
     private function targetOptions(): array
     {
         $subscriptionOptions = SubscriptionPackage::query()
+            ->active()
             ->orderBy('sort_order')
             ->get()
             ->map(fn (SubscriptionPackage $package): array => [
@@ -163,6 +164,7 @@ class DiscountCodeController extends Controller
             ->all();
 
         $creditOptions = ServiceProviderCreditPackage::query()
+            ->active()
             ->orderBy('sort_order')
             ->get()
             ->map(fn (ServiceProviderCreditPackage $package): array => [
