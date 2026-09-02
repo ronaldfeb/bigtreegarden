@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             AmbassadorSeeder::class,
             DemoPersonasSeeder::class,
             StaffTeamSeeder::class,
+            HelpCenterFaqSeeder::class,
             CrmDemoSeeder::class,
         ]);
     }
