@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { Head, Form } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
+import RichTextEditor from '@/components/RichTextEditor.vue';
 import StaffFormActions from '@/components/staff/StaffFormActions.vue';
 import StaffPageHeader from '@/components/staff/StaffPageHeader.vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import StaffLayout from '@/layouts/staff/StaffLayout.vue';
 import { index, store } from '@/routes/staff/content/help-center-articles';
 defineProps<{
@@ -48,13 +48,13 @@ defineProps<{
 
                 <div class="grid gap-2">
     <Label for="excerpt">Excerpt</Label>
-    <Textarea id="excerpt" name="excerpt" rows="8"   />
+    <RichTextEditor id="excerpt" name="excerpt" />
     <InputError :message="errors.excerpt" />
 </div>
 
                 <div class="grid gap-2">
     <Label for="body">Body</Label>
-    <Textarea id="body" name="body" rows="8"  required />
+    <RichTextEditor id="body" name="body" />
     <InputError :message="errors.body" />
 </div>
 
@@ -77,6 +77,14 @@ defineProps<{
     <Label for="sort_order">Sort order</Label>
     <Input id="sort_order" name="sort_order" type="number"   />
     <InputError :message="errors.sort_order" />
+</div>
+
+                <div class="grid gap-2">
+    <Label for="category_ids">Categories</Label>
+    <select id="category_ids" name="category_ids[]" multiple class="border-input min-h-24 w-full rounded-[var(--radius)] border bg-transparent px-3 py-2 text-sm">
+        <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
+    </select>
+    <InputError :message="errors.category_ids" />
 </div>
 
                     <StaffFormActions :cancel-href="index()" :processing="processing" />

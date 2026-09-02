@@ -27,4 +27,21 @@ class UpdateHelpCenterArticleRequest extends FormRequest
             'category_ids.*' => ['uuid', 'exists:help_center_categories,id'],
         ];
     }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->filled('published_at')) {
+            return;
+        }
+
+        $article = $this->route('help_center_article');
+
+        if ($article?->published_at === null) {
+            return;
+        }
+
+        $this->merge([
+            'published_at' => $article->published_at->format('Y-m-d\TH:i'),
+        ]);
+    }
 }
