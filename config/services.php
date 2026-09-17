@@ -42,4 +42,9 @@ return [
         'url' => env('PAYFAST_URL', env('PAYFAST_CHECKOUT_URL', 'https://sandbox.payfast.co.za/eng/process')),
     ],
 
+    'intercom' => [
+        'messenger_secret' => env('INTERCOM_MESSENGER_SECRET'),
+        'jwt_ttl' => env('INTERCOM_JWT_TTL'),
+    ],
+
 ];

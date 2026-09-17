@@ -5,6 +5,8 @@ import type { StaffUser } from '@/types/staff';
 declare module 'vite/client' {
     interface ImportMetaEnv {
         readonly VITE_APP_NAME: string;
+        readonly VITE_INTERCOM_APP_ID?: string;
+        readonly VITE_INTERCOM_API_BASE?: string;
         [key: string]: string | boolean | undefined;
     }
 
@@ -21,6 +23,7 @@ declare module '@inertiajs/core' {
             auth: Auth;
             staffUser: StaffUser | null;
             sidebarOpen: boolean;
+            intercomUserJwt: string | null;
             [key: string]: unknown;
         };
     }

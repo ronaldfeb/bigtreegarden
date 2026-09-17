@@ -39,6 +39,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
+import { intercomInboxUrl, isIntercomConfigured } from '@/lib/intercom';
 import { dashboard } from '@/routes/staff';
 import { edit as bankDetailsEdit } from '@/routes/staff/commerce/bank-details';
 import { index as creditPackagesIndex } from '@/routes/staff/commerce/credit-packages';
@@ -88,28 +89,33 @@ const props = defineProps<{
 
 const { isCurrentUrl, isCurrentOrParentUrl } = useCurrentUrl();
 
-const INTERCOM_INBOX_URL = 'https://app.intercom.com/a/apps/a8f6x7iy/inbox';
-
 const sections = computed((): NavSection[] => {
     const role = props.staffUser.role;
+
+    const overviewItems: StaffNavItem[] = [
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+            icon: LayoutGrid,
+        },
+    ];
+
+    const inboxUrl = intercomInboxUrl();
+
+    if (isIntercomConfigured() && inboxUrl !== null) {
+        overviewItems.push({
+            title: 'Live chat',
+            href: inboxUrl,
+            icon: MessageCircle,
+            external: true,
+        });
+    }
 
     const allSections: NavSection[] = [
         {
             title: 'Overview',
             roles: ['admin', 'marketing', 'content', 'support'],
-            items: [
-                {
-                    title: 'Dashboard',
-                    href: dashboard(),
-                    icon: LayoutGrid,
-                },
-                {
-                    title: 'Live chat',
-                    href: INTERCOM_INBOX_URL,
-                    icon: MessageCircle,
-                    external: true,
-                },
-            ],
+            items: overviewItems,
         },
         {
             title: 'Marketing',

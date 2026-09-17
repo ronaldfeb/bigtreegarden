@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\IntercomJwtService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -51,6 +52,7 @@ class HandleInertiaRequests extends Middleware
                 'status' => fn () => $request->session()->get('status'),
                 'vault_access_code' => fn () => $request->session()->get('vault_access_code'),
             ],
+            'intercomUserJwt' => fn (): ?string => app(IntercomJwtService::class)->forUser($user),
         ];
     }
 }

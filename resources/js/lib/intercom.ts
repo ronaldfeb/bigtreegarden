@@ -1,19 +1,38 @@
 import type { User } from '@/types/auth';
 
-const INTERCOM_APP_ID = 'a8f6x7iy';
-const INTERCOM_API_BASE = 'https://api-iam.intercom.io';
+export const intercomAppId = import.meta.env.VITE_INTERCOM_APP_ID ?? '';
+export const intercomApiBase =
+    import.meta.env.VITE_INTERCOM_API_BASE ?? 'https://api-iam.intercom.io';
 
 type IntercomBootSettings = {
     api_base: string;
     app_id: string;
+    intercom_user_jwt?: string;
     user_id?: string;
     name?: string;
     email?: string;
     created_at?: number;
 };
 
+type IntercomSyncOptions = {
+    user: User | null;
+    userJwt?: string | null;
+};
+
 let scriptLoaded = false;
 let isBooted = false;
+
+export function isIntercomConfigured(): boolean {
+    return intercomAppId.length > 0;
+}
+
+export function intercomInboxUrl(): string | null {
+    if (! isIntercomConfigured()) {
+        return null;
+    }
+
+    return `https://app.intercom.com/a/apps/${intercomAppId}/inbox`;
+}
 
 function getIntercom(): ((...args: unknown[]) => void) | undefined {
     if (typeof window.Intercom === 'function') {
@@ -24,6 +43,10 @@ function getIntercom(): ((...args: unknown[]) => void) | undefined {
 }
 
 export function loadIntercomScript(): void {
+    if (! isIntercomConfigured()) {
+        return;
+    }
+
     if (scriptLoaded || document.querySelector('script[src*="widget.intercom.io"]')) {
         scriptLoaded = true;
 
@@ -45,7 +68,7 @@ export function loadIntercomScript(): void {
         const script = document.createElement('script');
         script.type = 'text/javascript';
         script.async = true;
-        script.src = `https://widget.intercom.io/widget/${INTERCOM_APP_ID}`;
+        script.src = `https://widget.intercom.io/widget/${intercomAppId}`;
 
         const firstScript = document.getElementsByTagName('script')[0];
         firstScript.parentNode?.insertBefore(script, firstScript);
@@ -60,14 +83,21 @@ export function loadIntercomScript(): void {
     scriptLoaded = true;
 }
 
-function bootSettings(user?: User): IntercomBootSettings {
+function bootSettings({ user, userJwt }: IntercomSyncOptions): IntercomBootSettings {
     const settings: IntercomBootSettings = {
-        api_base: INTERCOM_API_BASE,
-        app_id: INTERCOM_APP_ID,
+        api_base: intercomApiBase,
+        app_id: intercomAppId,
     };
 
-    if (user === undefined) {
+    if (user === null) {
         return settings;
+    }
+
+    if (userJwt !== undefined && userJwt !== null && userJwt !== '') {
+        return {
+            ...settings,
+            intercom_user_jwt: userJwt,
+        };
     }
 
     return {
@@ -79,7 +109,11 @@ function bootSettings(user?: User): IntercomBootSettings {
     };
 }
 
-export function bootIntercom(user?: User): void {
+function applyIntercomSettings(options: IntercomSyncOptions): void {
+    if (! isIntercomConfigured()) {
+        return;
+    }
+
     loadIntercomScript();
 
     const intercom = getIntercom();
@@ -88,7 +122,7 @@ export function bootIntercom(user?: User): void {
         return;
     }
 
-    const settings = bootSettings(user);
+    const settings = bootSettings(options);
 
     if (isBooted) {
         intercom('update', settings);
@@ -98,10 +132,24 @@ export function bootIntercom(user?: User): void {
     }
 }
 
-export function updateIntercom(): void {
+export function bootIntercom(options: IntercomSyncOptions): void {
+    applyIntercomSettings(options);
+}
+
+export function updateIntercom(options: IntercomSyncOptions): void {
+    if (! isIntercomConfigured()) {
+        return;
+    }
+
     const intercom = getIntercom();
 
-    if (intercom === undefined || !isBooted) {
+    if (intercom === undefined || ! isBooted) {
+        return;
+    }
+
+    if (options.user !== null) {
+        intercom('update', bootSettings(options));
+
         return;
     }
 
@@ -111,7 +159,7 @@ export function updateIntercom(): void {
 export function shutdownIntercom(): void {
     const intercom = getIntercom();
 
-    if (intercom === undefined || !isBooted) {
+    if (intercom === undefined || ! isBooted) {
         return;
     }
 
@@ -119,14 +167,11 @@ export function shutdownIntercom(): void {
     isBooted = false;
 }
 
-export function syncIntercom(user: User | null): void {
-    shutdownIntercom();
-
-    if (user === null) {
-        bootIntercom();
-
+export function syncIntercom(options: IntercomSyncOptions): void {
+    if (! isIntercomConfigured()) {
         return;
     }
 
-    bootIntercom(user);
+    shutdownIntercom();
+    applyIntercomSettings(options);
 }

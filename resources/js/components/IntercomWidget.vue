@@ -4,27 +4,32 @@ import { onMounted, onUnmounted, watch } from 'vue';
 import { shutdownIntercom, syncIntercom, updateIntercom } from '@/lib/intercom';
 import type { Auth } from '@/types/auth';
 
-const page = usePage<{ auth: Auth }>();
+const page = usePage<{ auth: Auth; intercomUserJwt?: string | null }>();
 
-let removeNavigateListener: (() => void) | undefined;
+let removeSuccessListener: (() => void) | undefined;
+
+const intercomOptions = () => ({
+    user: page.props.auth.user ?? null,
+    userJwt: page.props.intercomUserJwt ?? null,
+});
 
 onMounted(() => {
-    syncIntercom(page.props.auth.user ?? null);
+    syncIntercom(intercomOptions());
 
-    removeNavigateListener = router.on('navigate', () => {
-        updateIntercom();
+    removeSuccessListener = router.on('success', () => {
+        updateIntercom(intercomOptions());
     });
 });
 
 watch(
-    () => page.props.auth.user,
-    (user) => {
-        syncIntercom(user ?? null);
+    () => [page.props.auth.user, page.props.intercomUserJwt] as const,
+    () => {
+        syncIntercom(intercomOptions());
     },
 );
 
 onUnmounted(() => {
-    removeNavigateListener?.();
+    removeSuccessListener?.();
     shutdownIntercom();
 });
 </script>
